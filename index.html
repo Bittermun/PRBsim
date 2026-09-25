@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Powder River Basin Coal-Fire Evidence Explorer</title>
+    <link rel="stylesheet" href="/src/prb/style.css" />
+</head>
+<body>
+    <!-- HEADER BAR -->
+    <header class="prb-header">
+        <div class="brand-section">
+            <span class="brand-title">POWDER RIVER BASIN COAL-FIRE EVIDENCE EXPLORER</span>
+            <span class="study-area-tag">CASE STUDY: REMINGTON WILDFIRE (2024)</span>
+            <span id="active-mode-notice" class="status-badge status-field_confirmed">✓ VERIFIED REAL DATASETS ONLY</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn-header" id="btn-toggle-theme">🌙 DARK THEME</button>
+            <button class="btn-header" id="btn-export-geojson" title="Export filtered records as GeoJSON">EXPORT GEOJSON</button>
+            <button class="btn-header" id="btn-export-csv" title="Export filtered records as CSV">EXPORT CSV</button>
+            <button class="btn-header primary" id="btn-export-brief" title="Open printable scientific summary report">EVIDENCE BRIEF (PDF/PRINT)</button>
+        </div>
+    </header>
+
+    <!-- MAIN INTERACTIVE WORKSPACE -->
+    <main class="prb-workspace">
+        <!-- Map Viewport -->
+        <div id="prb-map-container" role="region" aria-label="Interactive Evidence Map"></div>
+
+        <!-- Floating Evidence Inspector & Records Drawer -->
+        <aside class="evidence-panel-drawer" id="evidence-panel-container" role="complementary" aria-label="Evidence Panel"></aside>
+
+        <!-- Floating Cartographic Legend & Layer Toggles (Top Right) -->
+        <div class="legend-card-container" id="legend-card-container" role="region" aria-label="Map Legend and Layers"></div>
+
+        <!-- Bottom Timeline Dock & Scrubber -->
+        <footer class="timeline-dock-container" id="timeline-control-container" role="contentinfo" aria-label="Timeline Scrubber"></footer>
+    </main>
+
+    <!-- Bootstrap Script -->
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

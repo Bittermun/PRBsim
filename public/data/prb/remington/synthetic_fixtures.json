@@ -1,0 +1,175 @@
+{
+  "metadata": {
+    "title": "Synthetic Test Fixtures (Dev/Validation Only)",
+    "isSynthetic": true,
+    "disclaimer": "FOR SOFTWARE VERIFICATION AND EDGE-CASE TESTING ONLY. NOT REAL FIELD OBSERVATIONS. MUST BE EXCLUDED FROM SCIENTIFIC INFERENCE.",
+    "generatedDate": "2026-09-24",
+    "version": "1.0.0"
+  },
+  "sites": [
+    {
+      "id": "syn-site-birney-cluster",
+      "name": "Synthetic Tongue Divide Vent Complex A",
+      "groupingUncertainty": "unresolved_subsurface_connectivity",
+      "relatedVentIds": [
+        "syn-obs-vent-01",
+        "syn-obs-vent-02",
+        "syn-obs-vent-03"
+      ],
+      "geologySummary": "Anderson seam outcrop in steep ravine; thermal IR anomaly spans 180m; fractures show sulfur sublimation.",
+      "notes": "Three surface vents within 200m radius. Geophysical continuity unverified; treating as single potential combustion body with multiple release points."
+    },
+    {
+      "id": "syn-site-isolated-coulee",
+      "name": "Synthetic Otter Creek Outcrop B",
+      "groupingUncertainty": "isolated",
+      "relatedVentIds": [
+        "syn-obs-vent-04"
+      ],
+      "geologySummary": "Isolated Canyon coal seam exposure in cutbank.",
+      "notes": "Single vent with no adjacent thermal anomalies within 1.5 km."
+    }
+  ],
+  "observations": [
+    {
+      "id": "syn-obs-vent-01",
+      "siteId": "syn-site-birney-cluster",
+      "sourceId": "syn-src-aerial-ir-2024",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.2842,
+          45.1834
+        ]
+      },
+      "accuracyMeters": 15.0,
+      "observationDate": "2024-08-25",
+      "datePrecision": "day",
+      "endDate": null,
+      "method": "aerial_survey",
+      "reportedCondition": "Fuming fissure, surface temperature 142\u00b0C measured via FLIR",
+      "status": "sensor_detection",
+      "reportedCause": "Vegetation fire swept through ravine on 2024-08-23",
+      "verifiedEvidence": "Thermal imaging detection of 142\u00b0C hotspot at ground fissure; sulfur crystals observed on rim",
+      "analystInterpretation": "Probable ignition of weathered coal seam outcrop by Remington firefront, though pre-existing deep smolder cannot be ruled out without pre-fire baseline",
+      "lastObservedDate": "2024-08-25",
+      "ongoingActivityStatus": "unknown",
+      "isSynthetic": true
+    },
+    {
+      "id": "syn-obs-vent-02",
+      "siteId": "syn-site-birney-cluster",
+      "sourceId": "syn-src-aerial-ir-2024",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.2825,
+          45.1841
+        ]
+      },
+      "accuracyMeters": 20.0,
+      "observationDate": "2024-08-25",
+      "datePrecision": "day",
+      "endDate": null,
+      "method": "aerial_survey",
+      "reportedCondition": "Smoke venting from subsidence sinkhole",
+      "status": "sensor_detection",
+      "reportedCause": "Unknown",
+      "verifiedEvidence": "Visible smoke column and localized thermal anomaly (98\u00b0C)",
+      "analystInterpretation": "Secondary ventilation point connected to same subterranean burning body as syn-obs-vent-01",
+      "lastObservedDate": "2024-08-25",
+      "ongoingActivityStatus": "unknown",
+      "isSynthetic": true
+    },
+    {
+      "id": "syn-obs-vent-03",
+      "siteId": "syn-site-birney-cluster",
+      "sourceId": "syn-src-field-visit-2024",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.2818,
+          45.1829
+        ]
+      },
+      "accuracyMeters": 5.0,
+      "observationDate": "2024-09-05",
+      "datePrecision": "day",
+      "endDate": null,
+      "method": "field_visit",
+      "reportedCondition": "Surface subsidence fissure, CO concentration > 120 ppm, rock temperature 210\u00b0C",
+      "status": "field_confirmed",
+      "reportedCause": "Remington wildfire",
+      "verifiedEvidence": "Multi-gas detector CO > 120 ppm, thermocouple probe 210\u00b0C at 0.5m depth",
+      "analystInterpretation": "Active subsurface coal combustion. Gas chemistry confirms sub-surface oxidation.",
+      "lastObservedDate": "2024-09-05",
+      "ongoingActivityStatus": "unknown",
+      "isSynthetic": true
+    },
+    {
+      "id": "syn-obs-vent-04",
+      "siteId": "syn-site-isolated-coulee",
+      "sourceId": "syn-src-historical-lit",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.152,
+          45.312
+        ]
+      },
+      "accuracyMeters": 500.0,
+      "observationDate": "1978",
+      "datePrecision": "year",
+      "endDate": null,
+      "method": "historical_literature",
+      "reportedCondition": "Burning coal outcrop noted in field notes",
+      "status": "unverified_report",
+      "reportedCause": "Spontaneous combustion",
+      "verifiedEvidence": "Historical USGS open-file report narrative mention",
+      "analystInterpretation": "Pre-dates 2024 wildfire by decades; illustrates persistent historical baseline",
+      "lastObservedDate": "1978-07-01",
+      "ongoingActivityStatus": "unknown",
+      "isSynthetic": true
+    }
+  ],
+  "surveys": [
+    {
+      "id": "syn-survey-neg-01",
+      "sourceId": "syn-src-aerial-ir-2024",
+      "surveyDate": "2024-08-28",
+      "method": "FLIR aerial thermal reconnaissance",
+      "detectionLimitDescription": "Surface temperature elevation >= 15\u00b0C above ambient baseline, clear skies, pixel resolution 2.5m",
+      "negativeResultReported": true,
+      "footprintGeometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -106.4,
+              45.1
+            ],
+            [
+              -106.32,
+              45.1
+            ],
+            [
+              -106.32,
+              45.16
+            ],
+            [
+              -106.4,
+              45.16
+            ],
+            [
+              -106.4,
+              45.1
+            ]
+          ]
+        ]
+      },
+      "findings": "Zero surface thermal anomalies detected above 15\u00b0C threshold within surveyed 48 km\u00b2 sector. Does NOT rule out deep, well-insulated coal combustion without surface fissure expression.",
+      "notes": "Survey absence is bounded by date, footprint, and instrument detection limit; must never be interpreted as definitive absence of subterranean heat.",
+      "isSynthetic": true
+    }
+  ]
+}
