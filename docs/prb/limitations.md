@@ -1,24 +1,22 @@
-# Scientific Limitations & Honest Data Gaps
+# Scientific Limitations & Data Gaps Checklist
 
-## Remington Fire Case Study Limitations
+To maintain scientific integrity, the **PRB Coal-Fire Evidence Explorer** documents all data gaps and methodological limitations directly in the user interface (**Data Gaps & Matrix** tab) and in exported reports.
 
-### 1. Data Gap Assessment: No Public Subsurface Coal Combustion Inventory
-While the surface wildfire perimeter is verified by NIFC WFIGS (196,368.1 acres) and the regional geological setting is well-established by USGS and MBMG, **there is currently no publicly available, continuous, ground-verified inventory of active coal seam combustion points within the 2024 Remington Fire scar**.
+---
 
-Consequently:
-- In **Real Data Mode**, the explorer displays the verified wildfire perimeter and geological context, accompanied by an explicit data-gap advisory.
-- The explorer strictly avoids generating synthetic points or fabricating plausible vent locations to make the map look populated.
+## 1. Summary of Data Gaps (2024 Remington Wildfire Study Area)
 
-### 2. Temporal & Causal Ambiguity
-- **Absence of Pre-Fire Thermal Baseline**: Proving that the August 2024 vegetation fire initiated new subsurface coal combustion requires proving the coal was not smoldering prior to August 2024. Without airborne thermal surveys conducted immediately before the fire, causal direction remains an unproven hypothesis.
-- **Vegetation Reigniting Hypothesis**: The hypothesis that persistent coal fires subsequently ignite surface wildfires is a plausible physical mechanism recognized in literature, but requires forensic evidence (e.g., thermal tracking through winter snowmelt and direct ignition transfer observation) that is not currently recorded in public repositories.
+| Evidence Category | Current Repository Status | Sources Audited (Sept 2026) | Scientific Impact on Research Question |
+| :--- | :--- | :--- | :--- |
+| **Verified Post-2024 Subsurface Coal-Fire Point Inventory** | **NOT ACQUIRED FROM SOURCES CHECKED** | NIFC WFIGS, MT DNRC, BLM Montana/Dakotas Public GIS, MBMG Open-File Catalog, USGS ScienceBase | Default real-data mode contains **1** official wildfire perimeter and **0** verified coal-fire point observations. Secondary reporting (Montana Free Press, Sept 2025) describes 107 burning seams mapped after the Remington fire, and a Feb 2026 Montana DES mapping bulletin is noted as a primary-source lead, but no public coordinate inventory with precision and pre-fire baseline metadata has been acquired. |
+| **Source-Backed Local Clinker & Coal Outcrop Vector Layer** | **NOT ACQUIRED IN REPOSITORY (Schematic Fixture Quarantined)** | USGS Professional Paper 1625-A & MBMG regional stratigraphy catalogs | Hand-constructed schematic polygons in `geological_context.geojson` are marked `isSynthetic: true` and excluded from default real-data views and real-mode exports so they cannot be mistaken for surveyed USGS/MBMG boundaries. |
+| **Pre-Fire vs. Post-Fire Thermal Baseline (Pre-Aug 22, 2024)** | **MISSING SYSTEMATIC BASELINE IN ACQUIRED DATA** | LANDFIRE, USGS Coal Fields of the Conterminous US, Heffern & Coates (2004) | First post-fire detection of a smoldering seam cannot be equated with new ignition by the 2024 Remington Wildfire unless pre-fire absence or new ignition mechanism is independently established. |
+| **Multi-Vent Subsurface Connectivity** | **UNRESOLVED IN SURFACE OBSERVATIONS** | Borehole thermometry, electrical resistivity, UAV FLIR literature | Multiple surface fumaroles along a clinker bench may stem from a single continuous underground combustion zone; counting individual vents inflates fire ignition counts. |
 
-### 3. Spatial Resolution & Geological Generalization
-- The geological boundaries for the Tongue River Member and clinker outcrop belts are digitized from 1:100,000 to 1:500,000 regional mapping. Actual coal seam outcrop contacts in deeply incised coulees require 1:24,000 quadrangle or localized drone photogrammetry.
-- Clinker denotes where coal burned in prehistoric or historical times (producing baked rock); it is an indicator of combustible coal proximity, not a marker of active modern fire.
+---
 
-### 4. Separate Future Research Questions
-- Wider carbon and mercury emissions quantification.
-- Regional groundwater aquifer and coal-bed methane hydraulic connectivity.
-- Boreal forest smoldering comparisons.
-These remain open research questions and are deliberately excluded from this local case-study release.
+## 2. Why `0` Real Coal-Fire Observations and `0` Real Geology Polygons Are Rendered by Default
+
+In default real mode (`includeSynthetic: false`), the map displays **only** the verified 2024 Remington Wildfire final perimeter (`196,368.1 acres`, WFIGS polygon timestamp `2025-01-15`). It does **not** plot synthetic vents, schematic geology bounding boxes, or approximate pins derived from news articles.
+
+Researchers can inspect the **Data Gaps & Matrix** tab for the non-spatial **Remington Case Study Evidence & Chronology Matrix**, or toggle **Synthetic Validation Fixtures** on the timeline bar to test multi-vent grouping, interval filtering, and bounded negative survey rendering.

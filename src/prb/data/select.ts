@@ -1,184 +1,174 @@
 /**
- * Deterministic Selection & Filtering for PRB Evidence Explorer
- * 
- * Invariants:
- * - Pure selection function: identical inputs always yield identical outputs.
- * - Timezone-neutral date arithmetic: date strings are parsed as ISO calendar
- *   components without local timezone shifts.
- * - Non-continuous observation assumption: An observation is treated as a point-in-time
- *   measurement; it does NOT imply ongoing combustion into subsequent dates.
- * - Multi-vent body grouping preservation: Resolves linked vents without mutating or
- *   overcounting distinct subterranean fires.
+ * Temporal, Spatial, and Epistemic Filtering & Query Logic for PRB Evidence Explorer
+ *
+ * Responsibilities:
+ * 1. Enforce strict quarantine of synthetic records (`includeSynthetic === false` by default),
+ *    including schematic geological context polygons.
+ * 2. Filter discrete coal-fire observations and surveys by date/interval windows without
+ *    animating or hiding the single retrospective final wildfire perimeter (`retrospective_final_footprint`)
+ *    as if it were daily fire spread.
+ * 3. Reject invalid calendar dates and inverted filter windows (`startDate > endDate`).
+ * 4. Preserve multi-vent site grouping (`CoalFireSite`) so multiple vents on one seam
+ *    are not miscounted as independent fire ignitions.
  */
 
-import type { 
-    PRBDataSet, 
-    EvidenceFilterState, 
-    Observation, 
-    FirePerimeter, 
-    GeologicalFeature, 
-    Survey, 
-    Site 
-} from './types';
+import type {
+    PRBEvidenceDataset,
+    FilterState,
+    CoalFireObservation,
+    CoalFireSite,
+    WildfirePerimeterRecord,
+    SurveyCoverageRecord,
+    GeologicalContextFeature
+} from './types.ts';
+import { ValidationError, isValidIsoCalendarDate } from './load.ts';
 
 export interface FilteredEvidenceResult {
-    filteredObservations: Observation[];
-    activeSites: Site[];
-    filteredPerimeters: FirePerimeter[];
-    geologicalFeatures: GeologicalFeature[];
-    filteredSurveys: Survey[];
-    totalObservationsCount: number;
-    multiVentClustersCount: number;
-    negativeSurveysCount: number;
-    activeDateWindow: {
-        startDate: string;
-        endDate: string;
-    };
-    isSyntheticActive: boolean;
+    wildfirePerimeters: WildfirePerimeterRecord[];
+    geologicalFeatures: GeologicalContextFeature[];
+    sites: CoalFireSite[];
+    observations: CoalFireObservation[];
+    surveys: SurveyCoverageRecord[];
+    activeSyntheticCount: number;
+    realObservationCount: number;
 }
 
 /**
- * Standardize date string into a comparable YYYY-MM-DD format (safe from timezone shifts).
+ * Validates a filter window's startDate and endDate.
  */
-export function normalizeIsoDate(dateStr: string, isEndBound = false): string {
-    if (!dateStr) return isEndBound ? '9999-12-31' : '0000-01-01';
-    const trimmed = dateStr.trim();
-    if (/^\d{4}$/.test(trimmed)) {
-        return isEndBound ? `${trimmed}-12-31` : `${trimmed}-01-01`;
+export function validateFilterDateRange(startDate: string, endDate: string): void {
+    if (startDate && !isValidIsoCalendarDate(startDate)) {
+        throw new ValidationError(`Invalid calendar startDate '${startDate}' in filter window.`);
     }
-    if (/^\d{4}-\d{2}$/.test(trimmed)) {
-        const [year, month] = trimmed.split('-').map(Number);
-        if (isEndBound) {
-            const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-            return `${trimmed}-${String(lastDay).padStart(2, '0')}`;
+    if (endDate && !isValidIsoCalendarDate(endDate)) {
+        throw new ValidationError(`Invalid calendar endDate '${endDate}' in filter window.`);
+    }
+    if (startDate && endDate && startDate > endDate) {
+        throw new ValidationError(
+            `Inverted date window: startDate (${startDate}) must not be after endDate (${endDate}).`
+        );
+    }
+}
+
+/**
+ * Checks whether a point-in-time or interval observation [dateStr, recordEndDate]
+ * overlaps the filter window [startDate, endDate] (inclusive, UTC calendar day strings).
+ */
+export function isDateWithinWindow(
+    dateStr: string,
+    startDate: string,
+    endDate: string,
+    recordEndDate?: string
+): boolean {
+    if (!dateStr || !isValidIsoCalendarDate(dateStr)) {
+        throw new ValidationError(`Invalid calendar date '${dateStr}' tested against window.`);
+    }
+    if (recordEndDate !== undefined && recordEndDate !== '') {
+        if (!isValidIsoCalendarDate(recordEndDate)) {
+            throw new ValidationError(`Invalid calendar recordEndDate '${recordEndDate}' tested against window.`);
         }
-        return `${trimmed}-01`;
+        if (recordEndDate < dateStr) {
+            throw new ValidationError(
+                `Inverted record interval: recordEndDate (${recordEndDate}) must not precede observation date (${dateStr}).`
+            );
+        }
     }
-    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-        return trimmed.slice(0, 10);
-    }
-    return trimmed;
+    validateFilterDateRange(startDate, endDate);
+
+    const effectiveEnd = recordEndDate && recordEndDate >= dateStr ? recordEndDate : dateStr;
+    if (startDate && effectiveEnd < startDate) return false;
+    if (endDate && dateStr > endDate) return false;
+    return true;
 }
 
 /**
- * Deterministic date comparison without timezone drift.
- * Returns -1 if a < b, 1 if a > b, 0 if equal.
- */
-export function compareCalendarDates(a: string, b: string): number {
-    const na = normalizeIsoDate(a);
-    const nb = normalizeIsoDate(b);
-    if (na < nb) return -1;
-    if (na > nb) return 1;
-    return 0;
-}
-
-/**
- * Determines whether an observation date falls within [startIso, endIso].
- */
-export function isDateWithinWindow(obsDate: string, startIso: string, endIso: string): boolean {
-    const normalizedObsStart = normalizeIsoDate(obsDate, false);
-    const normalizedObsEnd = normalizeIsoDate(obsDate, true);
-    const normalizedFilterStart = normalizeIsoDate(startIso, false);
-    const normalizedFilterEnd = normalizeIsoDate(endIso, true);
-
-    // Overlaps if obsStart <= filterEnd AND obsEnd >= filterStart
-    return normalizedObsStart <= normalizedFilterEnd && normalizedObsEnd >= normalizedFilterStart;
-}
-
-/**
- * Pure selection function.
+ * Filters the PRB dataset according to the current UI FilterState.
+ * Guarantees that synthetic fixtures (including schematic geology) never leak when `includeSynthetic` is false.
  */
 export function filterEvidence(
-    dataset: PRBDataSet, 
-    filters: EvidenceFilterState
+    dataset: PRBEvidenceDataset,
+    filter: FilterState
 ): FilteredEvidenceResult {
-    const { 
-        startDate, 
-        endDate, 
-        includeSynthetic, 
-        statusFilter, 
-        methodFilter, 
-        showGeology, 
-        showPerimeters, 
-        showSurveys, 
-        showObservations 
-    } = filters;
+    validateFilterDateRange(filter.startDate, filter.endDate);
 
-    // 1. Filter Observations
-    let filteredObservations: Observation[] = [];
-    if (showObservations) {
-        filteredObservations = dataset.observations.filter(obs => {
-            // Exclude synthetic unless explicitly allowed
-            if (obs.isSynthetic && !includeSynthetic) return false;
+    const allowedStatusSet = new Set(filter.allowedStatuses);
 
-            // Method filter
-            if (!methodFilter.has(obs.method)) return false;
-
-            // Status filter
-            if (!statusFilter.has(obs.status)) return false;
-
-            // Date window
-            return isDateWithinWindow(obs.observationDate, startDate, endDate);
-        });
-    }
-
-    // Sort observations deterministically by date then ID
-    filteredObservations.sort((a, b) => {
-        const cmp = compareCalendarDates(a.observationDate, b.observationDate);
-        if (cmp !== 0) return cmp;
-        return a.id.localeCompare(b.id);
+    // 1. Filter Wildfire Perimeters:
+    // Retrospective final footprints remain visible across all timeline dates so they are never
+    // animated as pseudo-daily progression. Only progression_snapshot perimeters scrub by date.
+    const wildfirePerimeters = dataset.wildfirePerimeters.filter(p => {
+        if (!filter.includeSynthetic && p.isSynthetic) return false;
+        if (p.temporalRole === 'retrospective_final_footprint') {
+            return true;
+        }
+        return isDateWithinWindow(p.discoveryDate, filter.startDate, filter.endDate, p.controlDate);
     });
 
-    // 2. Identify active sites & multi-vent clusters
-    const activeSiteIds = new Set<string>();
-    filteredObservations.forEach(o => {
-        if (o.siteId) activeSiteIds.add(o.siteId);
+    // 2. Filter Geological Context Features (quarantining schematic polygons when includeSynthetic is false)
+    const geologicalFeatures = dataset.geologicalFeatures.filter(g => {
+        if (!filter.includeSynthetic && g.isSynthetic) return false;
+        return true;
     });
 
-    const activeSites = dataset.sites.filter(site => activeSiteIds.has(site.id));
-    const multiVentClustersCount = activeSites.filter(
-        s => s.groupingUncertainty === 'unresolved_subsurface_connectivity'
-    ).length;
+    // 3. Filter Observations (supporting observationDate..endDate intervals)
+    const observations = dataset.observations.filter(obs => {
+        if (!filter.includeSynthetic && obs.isSynthetic) return false;
+        if (!allowedStatusSet.has(obs.status)) return false;
+        if (filter.selectedSiteId && obs.siteId !== filter.selectedSiteId) return false;
+        return isDateWithinWindow(
+            obs.observationDate,
+            filter.startDate,
+            filter.endDate,
+            obs.endDate
+        );
+    });
 
-    // 3. Filter Fire Perimeters
-    let filteredPerimeters: FirePerimeter[] = [];
-    if (showPerimeters) {
-        filteredPerimeters = dataset.firePerimeters.filter(p => {
-            if (p.isSynthetic && !includeSynthetic) return false;
-            // Check if wildfire active/discovered within timeline window
-            const perimStart = p.discoveryDate || '2024-08-22';
-            const perimEnd = p.controlDate || p.containmentDate || '2024-11-12';
-            return isDateWithinWindow(perimStart, startDate, endDate) || 
-                   isDateWithinWindow(perimEnd, startDate, endDate) ||
-                   (normalizeIsoDate(perimStart) <= normalizeIsoDate(endDate) && normalizeIsoDate(perimEnd) >= normalizeIsoDate(startDate));
-        });
-    }
-
-    // 4. Geological Features
-    const geologicalFeatures = showGeology ? dataset.geologicalFeatures : [];
+    // 4. Filter Sites (include sites that match synthetic flag and have >=1 visible observation or are explicitly selected)
+    const visibleSiteIds = new Set(observations.map(o => o.siteId));
+    const sites = dataset.sites.filter(s => {
+        if (!filter.includeSynthetic && s.isSynthetic) return false;
+        if (filter.selectedSiteId && s.id === filter.selectedSiteId) return true;
+        return visibleSiteIds.has(s.id);
+    });
 
     // 5. Filter Surveys
-    let filteredSurveys: Survey[] = [];
-    if (showSurveys) {
-        filteredSurveys = dataset.surveys.filter(surv => {
-            if (surv.isSynthetic && !includeSynthetic) return false;
-            return isDateWithinWindow(surv.surveyDate, startDate, endDate);
-        });
-    }
+    const surveys = dataset.surveys.filter(sv => {
+        if (!filter.includeSynthetic && sv.isSynthetic) return false;
+        return isDateWithinWindow(sv.surveyDate, filter.startDate, filter.endDate);
+    });
+
+    const activeSyntheticCount =
+        wildfirePerimeters.filter(p => p.isSynthetic).length +
+        geologicalFeatures.filter(g => g.isSynthetic).length +
+        sites.filter(s => s.isSynthetic).length +
+        observations.filter(o => o.isSynthetic).length +
+        surveys.filter(sv => sv.isSynthetic).length;
+
+    const realObservationCount = observations.filter(o => !o.isSynthetic).length;
 
     return {
-        filteredObservations,
-        activeSites,
-        filteredPerimeters,
+        wildfirePerimeters,
         geologicalFeatures,
-        filteredSurveys,
-        totalObservationsCount: filteredObservations.length,
-        multiVentClustersCount,
-        negativeSurveysCount: filteredSurveys.filter(s => s.negativeResultReported).length,
-        activeDateWindow: {
-            startDate,
-            endDate
-        },
-        isSyntheticActive: includeSynthetic
+        sites,
+        observations,
+        surveys,
+        activeSyntheticCount,
+        realObservationCount
     };
+}
+
+/**
+ * Groups observations by their parent CoalFireSite ID to prevent double-counting
+ * multiple surface fumaroles/vents as independent underground fires.
+ */
+export function groupObservationsBySite(
+    observations: CoalFireObservation[]
+): Map<string, CoalFireObservation[]> {
+    const map = new Map<string, CoalFireObservation[]>();
+    for (const obs of observations) {
+        const list = map.get(obs.siteId) || [];
+        list.push(obs);
+        map.set(obs.siteId, list);
+    }
+    return map;
 }

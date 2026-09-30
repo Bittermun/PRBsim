@@ -698,6 +698,7 @@ body {
 .dot-field { background: #059669; }
 .dot-sensor { background: #d97706; }
 .dot-unverified { background: #7c3aed; }
+.dot-extinguished { background: #64748b; }
 .dot-reignited { background: #dc2626; }
 
 .grouping-caveat-box {

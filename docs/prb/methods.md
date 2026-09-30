@@ -1,35 +1,20 @@
-# Research Methods & Data Model Architecture
+# Scientific Methodology & Data Architecture
 
-## Powder River Basin Coal-Fire Evidence Explorer (Remington Study Area)
+## 1. Core Epistemic Design
 
-### 1. Purpose & Guiding Research Question
-This application is an auditable case-study explorer investigating interactions between surface vegetation wildfires (specifically the 2024 Remington Fire) and subterranean coal seam combustion in the Powder River Basin (Montana/Wyoming).
+The **PRB Coal-Fire Evidence Explorer** is designed around a single scientific requirement: **separating verified empirical observations from hypotheses, secondary reporting, and synthetic validation fixtures**.
 
-The central hypothesis under investigation is:
-> *Do surface vegetation fires generate new persistent coal-seam fires, which can subsequently reignite surface vegetation?*
+In coal-fire and wildfire research, four methodological errors frequently distort conclusions:
+1. **Conflating Multiple Vents with Independent Ignitions**: A single subterranean coal-seam combustion front often vents through dozens of surface fissures along a fractured clinker bench. Treating each fumarole or thermal pixel as an independent coal-seam fire inflates fire counts.
+2. **Conflating Unsurveyed Areas with Absence of Fire**: Absence of reported vents in an unsurveyed ranching drainage does not mean absence of subsurface combustion. Only bounded negative thermal surveys establish absence of detectable surface thermal anomalies at a specific time.
+3. **Conflating First Post-Fire Detection with New Ignition**: Discovering a smoldering coal seam after a surface wildfire passes over does not prove the surface wildfire ignited the seam unless a pre-fire thermal baseline or physical ignition pathway is established.
+4. **Conflating a Final Cumulative Perimeter with Daily Fire Spread**: An official final wildfire polygon (such as the WFIGS Remington perimeter mapped on `2025-01-15`) represents the cumulative outer footprint of the burn scar, not day-by-day fire front progression.
 
-### 2. Core Scientific Constraints & Invariants
+---
 
-1. **New Detection $\neq$ New Ignition**:
-   A thermal hotspot or venting fissure identified after a wildfire cannot be asserted to have been caused by that wildfire without a documented pre-fire negative baseline. In-situ coal smoldering can persist undetected underground for decades.
-2. **Multi-Vent Grouping Uncertainty**:
-   Multiple surface fissures venting combustion products may originate from a single continuous subterranean combustion body. Surface vent counts must not be naively equated to discrete fire counts.
-3. **Spatial Overlap $\neq$ Causation or Hydraulic Connectivity**:
-   Co-location of a wildfire perimeter with a coal outcrop does not establish ignition direction, subsurface fracture propagation, or groundwater contamination pathways.
-4. **Survey Absence $\neq$ Evidence of Absence**:
-   A negative observation must have a defined spatial footprint, observation timestamp, method, and instrument detection limit. Unsurveyed regions must be rendered as *unknown/unsurveyed*, never as *fire-free*.
-5. **Separation of Evidence Categories**:
-   - **Reported Cause**: Unverified narrative attribution from initial dispatch, property owners, or media.
-   - **Verified Evidence**: Calibrated physical sensor measurements, gas chromatography (CO, $CO_2$, $SO_2$), thermocouple probes, and ground-truth sample receipts.
-   - **Analyst Interpretation**: Working scientific hypotheses or models with documented assumptions.
-6. **No Synthetic Data in Empirical Claims**:
-   Synthetic fixtures exist strictly for verifying interface mechanics (handling multi-vent clustering, negative survey footprints, and variable date precision) and are strictly quarantined behind an explicit developer toggle.
+## 2. Relational Domain Model (`src/prb/data/types.ts`)
 
-### 3. Data Entities
-
-- **`FirePerimeter`**: Official spatial polygon, agency provenance, discovery/containment timestamps, mapping methodology, and calculated acreage.
-- **`GeologicalUnit`**: Stratigraphic members (e.g., Tongue River Member) and historical clinker outcrop belts that establish combustion susceptibility and long-term geological precedent.
-- **`Site`**: A physical location that may encompass one or more surface vents sharing uncertain subsurface connectivity (`isolated`, `cluster_member`, `unresolved_subsurface_connectivity`).
-- **`Observation`**: Immutable point or polygon record with date, date precision (`day`, `month`, `year`), method, reported condition, verification status, and separate fields for reported cause, verified physical evidence, and interpretation.
-- **`Survey`**: Negative or positive reconnaissance campaign with explicit polygon footprint, sensor detection limit, date, and findings.
-- **`DatasetManifest`**: Auditable catalog containing title, publisher, original URL, retrieval date, SHA256 cryptographic hash, spatial/temporal coverage, and field-level lineage.
+1. **`DatasetSource`**: Provenance record containing publisher, license, retrieval date, spatial accuracy, limitations, and `processedSha256`. At runtime, `loadPRBEvidenceData` (`src/prb/data/load.ts`) computes the SHA-256 digest of fetched file bytes via `crypto.subtle.digest('SHA-256', buffer)` and throws a `ValidationError` on any mismatch.
+2. **`WildfirePerimeterRecord`**: Stores `discoveryDate` (`2024-08-22`), `containmentDate` (`2024-09-21`), `controlDate` (`2024-11-12`), polygon snapshot `mapDate` (`2025-01-15`), and `temporalRole` (`retrospective_final_footprint`). Because `temporalRole` is `retrospective_final_footprint`, `filterEvidence` (`src/prb/data/select.ts`) keeps the perimeter visible across timeline dates as static spatial context rather than animating it as fake daily spread.
+3. **`CoalFireSite` & `CoalFireObservation`**: Groups individual surface vents (`CoalFireObservation`) under a parent `CoalFireSite` with explicit `groupingUncertainty` (`confirmed_single_body`, `inferred_connected_seam`, or `unresolved_multi_vent`). Missing coordinate precision is preserved as `accuracyMeters: null` (`±unknown`) and never defaulted to `50m`.
+4. **`RemingtonCaseChronology`**: Non-spatial source-linked evidence matrix in `manifest.json` documenting verified WFIGS dates alongside attributed secondary reporting (Sept 2025 Montana Free Press report of 107 burning seams), primary-source follow-up leads (Feb 2026 MT DES bulletin), and separate hydrological context (Meredith 2016).

@@ -2,8 +2,8 @@
 
 When creating or modifying UI components in `src/prb/ui/` or styles in `src/prb/style.css`, follow these exact conventions:
 
-1. **Vanilla TypeScript Class Pattern (No React / No Tailwind)**:
-   - Each UI component in `src/prb/ui/` is a standalone Vanilla TypeScript class (`EvidencePanel`, `ExportDialog`, `MapLegend`, `TimelineControl`) that accepts a `containerId: string` (or `HTMLElement`), binds DOM listeners cleanly, and exposes typed callback setters (e.g., `setOnLayerToggle`).
+1. **Vanilla TypeScript Pattern (No React / No Tailwind)**:
+   - Stateful UI components in `src/prb/ui/` (`EvidencePanel`, `MapLegend`, `TimelineControl`) are standalone Vanilla TypeScript classes that accept a `containerId: string` (or `HTMLElement`), bind DOM listeners cleanly, and expose typed callback setters (e.g., `setOnLayerToggle`), while `ExportDialog.ts` exposes pure, Node-testable export/report builders (`buildExportGeoJson`, `buildExportCsv`, `buildStaticBriefHtml`) alongside browser download/print helpers.
    - Do not introduce React, JSX, Tailwind, or external UI frameworks.
 
 2. **Restrained Scientific Design System (`src/prb/style.css`)**:

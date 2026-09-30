@@ -1,10 +1,12 @@
 /**
  * Timeline Control & Date Scrubber for PRB Evidence Explorer
- * 
+ *
  * - Deterministic forward and backward step controls
  * - Timezone-safe date arithmetic (UTC calendar days)
  * - Synthetic test fixtures toggle with explicit visual badge
- * - Non-continuous observation framing: scrubs discrete observation windows
+ * - Non-continuous observation framing: scrubs discrete observation/survey windows
+ *   while the 2024 Remington Wildfire final perimeter (map date 2025-01-15) remains static context
+ * - Guards against inverted date ranges (startDate > endDate)
  */
 
 export interface TimelineChangeEvent {
@@ -17,7 +19,7 @@ export interface TimelineChangeEvent {
 export class TimelineControl {
     private container: HTMLElement;
     private minDate: string = '1975-01-01'; // Accommodates historic literature baseline
-    private maxDate: string = '2024-12-31'; // Remington fire aftermath
+    private maxDate: string = '2025-12-31'; // Accommodates 2025-01-15 polygon snapshot & post-fire surveys
     private currentStartDate: string = '2024-08-01';
     private currentEndDate: string = '2024-10-01';
     private isPlaying: boolean = false;
@@ -38,12 +40,14 @@ export class TimelineControl {
     }
 
     public setDateWindow(start: string, end: string): void {
-        this.currentStartDate = start;
-        this.currentEndDate = end;
+        const safeStart = start <= end ? start : end;
+        const safeEnd = end >= start ? end : start;
+        this.currentStartDate = safeStart;
+        this.currentEndDate = safeEnd;
         const startInput = this.container.querySelector('#timeline-date-start') as HTMLInputElement;
         const endInput = this.container.querySelector('#timeline-date-end') as HTMLInputElement;
-        if (startInput) startInput.value = start;
-        if (endInput) endInput.value = end;
+        if (startInput) startInput.value = safeStart;
+        if (endInput) endInput.value = safeEnd;
         this.triggerChange();
     }
 
@@ -59,14 +63,17 @@ export class TimelineControl {
             <div class="timeline-hud-card">
                 <div class="timeline-meta-bar">
                     <div class="timeline-badge-group">
-                        <span class="hud-label">OBSERVATION WINDOW:</span>
+                        <span class="hud-label">OBSERVATION FILTER WINDOW:</span>
                         <span class="hud-value" id="current-window-display">${this.currentStartDate} → ${this.currentEndDate}</span>
+                        <span class="study-area-tag" title="The WFIGS Remington wildfire polygon (2025-01-15) is a single retrospective final boundary, so it remains visible across dates rather than animating daily spread.">
+                            Perimeter: Static Final Footprint (Map Date 2025-01-15)
+                        </span>
                     </div>
 
                     <div class="synthetic-toggle-group">
-                        <label class="synthetic-switch-label" title="Enable synthetic test fixtures demonstrating multi-vent and negative survey edge cases">
+                        <label class="synthetic-switch-label" title="Enable synthetic test fixtures demonstrating multi-vent grouping, negative surveys, and schematic stratigraphy">
                             <input type="checkbox" id="toggle-synthetic-fixtures" ${this.includeSynthetic ? 'checked' : ''} />
-                            <span class="synthetic-badge">SYNTHETIC VALIDATION FIXTURES</span>
+                            <span class="synthetic-badge">SYNTHETIC VALIDATION FIXTURES (QUARANTINED)</span>
                         </label>
                     </div>
                 </div>
@@ -75,13 +82,13 @@ export class TimelineControl {
                     <div class="button-group">
                         <button class="time-btn" id="btn-step-back-month" title="Step 1 Month Backward">« -1M</button>
                         <button class="time-btn" id="btn-step-back-day" title="Step 1 Day Backward">‹ -1D</button>
-                        <button class="time-btn primary" id="btn-play-pause" title="Play or Pause Timeline">▶ PLAY</button>
+                        <button class="time-btn primary" id="btn-play-pause" title="Play or Pause Observation Scrubber">▶ PLAY</button>
                         <button class="time-btn" id="btn-step-fwd-day" title="Step 1 Day Forward">+1D ›</button>
                         <button class="time-btn" id="btn-step-fwd-month" title="Step 1 Month Forward">+1M »</button>
                     </div>
 
                     <div class="slider-wrapper">
-                        <input type="range" id="timeline-scrubber" min="0" max="100" value="70" class="time-scrubber" />
+                        <input type="range" id="timeline-scrubber" min="0" max="100" value="50" class="time-scrubber" aria-label="Scrub observation window end date" />
                     </div>
 
                     <div class="date-bounds-controls">
@@ -93,7 +100,7 @@ export class TimelineControl {
                             <span>TO:</span>
                             <input type="date" id="timeline-date-end" value="${this.currentEndDate}" min="${this.minDate}" max="${this.maxDate}" />
                         </label>
-                        <button class="time-btn reset-btn" id="btn-remington-focus" title="Reset to August-September 2024 Remington Fire Period">2024 FIRE SCAR</button>
+                        <button class="time-btn reset-btn" id="btn-remington-focus" title="Reset to August-October 2024 Remington Fire Window">2024 FIRE WINDOW</button>
                     </div>
                 </div>
             </div>
@@ -125,12 +132,36 @@ export class TimelineControl {
         });
 
         startInput?.addEventListener('change', () => {
-            this.currentStartDate = startInput.value;
+            if (!startInput.value) return;
+            const clampedStart =
+                startInput.value < this.minDate
+                    ? this.minDate
+                    : startInput.value > this.maxDate
+                      ? this.maxDate
+                      : startInput.value;
+            this.currentStartDate = clampedStart;
+            startInput.value = clampedStart;
+            if (this.currentStartDate > this.currentEndDate) {
+                this.currentEndDate = this.currentStartDate;
+                if (endInput) endInput.value = this.currentEndDate;
+            }
             this.triggerChange();
         });
 
         endInput?.addEventListener('change', () => {
-            this.currentEndDate = endInput.value;
+            if (!endInput.value) return;
+            const clampedEnd =
+                endInput.value < this.minDate
+                    ? this.minDate
+                    : endInput.value > this.maxDate
+                      ? this.maxDate
+                      : endInput.value;
+            this.currentEndDate = clampedEnd;
+            endInput.value = clampedEnd;
+            if (this.currentEndDate < this.currentStartDate) {
+                this.currentStartDate = this.currentEndDate;
+                if (startInput) startInput.value = this.currentStartDate;
+            }
             this.triggerChange();
         });
 
@@ -146,6 +177,10 @@ export class TimelineControl {
             const endTimestamp = new Date('2024-11-30T00:00:00Z').getTime();
             const cur = new Date(startTimestamp + pct * (endTimestamp - startTimestamp));
             this.currentEndDate = cur.toISOString().slice(0, 10);
+            if (this.currentEndDate < this.currentStartDate) {
+                this.currentStartDate = this.currentEndDate;
+                if (startInput) startInput.value = this.currentStartDate;
+            }
             if (endInput) endInput.value = this.currentEndDate;
             this.triggerChange();
         });
@@ -153,7 +188,7 @@ export class TimelineControl {
         // Keyboard Shortcuts (Space for play/pause, ArrowLeft/ArrowRight to scrub)
         this.keyListener = (e: KeyboardEvent) => {
             const activeTag = (document.activeElement?.tagName || '').toLowerCase();
-            if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
+            if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select' || activeTag === 'button') {
                 return;
             }
             if (e.code === 'Space') {
@@ -190,9 +225,11 @@ export class TimelineControl {
         }
 
         if (this.isPlaying) {
+            if (this.currentEndDate >= '2024-11-30') {
+                this.setDateWindow('2024-08-01', '2024-08-22');
+            }
             this.playInterval = window.setInterval(() => {
                 this.stepDays(1);
-                // Stop at end of 2024
                 if (this.currentEndDate >= '2024-11-30') {
                     this.togglePlay();
                 }
@@ -206,10 +243,33 @@ export class TimelineControl {
     private stepDays(days: number): void {
         const cur = new Date(`${this.currentEndDate}T00:00:00Z`);
         cur.setUTCDate(cur.getUTCDate() + days);
-        this.currentEndDate = cur.toISOString().slice(0, 10);
+        const rawEnd = cur.toISOString().slice(0, 10);
+        const nextEnd =
+            rawEnd < this.minDate
+                ? this.minDate
+                : rawEnd > this.maxDate
+                  ? this.maxDate
+                  : rawEnd;
+        this.currentEndDate = nextEnd;
+        if (this.currentEndDate < this.currentStartDate) {
+            this.currentStartDate = this.currentEndDate;
+            const startInput = this.container.querySelector('#timeline-date-start') as HTMLInputElement;
+            if (startInput) startInput.value = this.currentStartDate;
+        }
         const endInput = this.container.querySelector('#timeline-date-end') as HTMLInputElement;
         if (endInput) endInput.value = this.currentEndDate;
         this.triggerChange();
+    }
+
+    private syncScrubberFromEndDate(): void {
+        const scrubber = this.container.querySelector('#timeline-scrubber') as HTMLInputElement | null;
+        if (!scrubber) return;
+        const startTimestamp = new Date('2024-08-01T00:00:00Z').getTime();
+        const endTimestamp = new Date('2024-11-30T00:00:00Z').getTime();
+        const curTimestamp = new Date(`${this.currentEndDate}T00:00:00Z`).getTime();
+        const rawPct = ((curTimestamp - startTimestamp) / (endTimestamp - startTimestamp)) * 100;
+        const clampedPct = Math.max(0, Math.min(100, Math.round(rawPct)));
+        scrubber.value = String(clampedPct);
     }
 
     private triggerChange(): void {
@@ -217,6 +277,7 @@ export class TimelineControl {
         if (display) {
             display.textContent = `${this.currentStartDate} → ${this.currentEndDate}`;
         }
+        this.syncScrubberFromEndDate();
 
         if (this.onDateChange) {
             this.onDateChange({

@@ -1,175 +1,233 @@
 {
-  "metadata": {
-    "title": "Synthetic Test Fixtures (Dev/Validation Only)",
-    "isSynthetic": true,
-    "disclaimer": "FOR SOFTWARE VERIFICATION AND EDGE-CASE TESTING ONLY. NOT REAL FIELD OBSERVATIONS. MUST BE EXCLUDED FROM SCIENTIFIC INFERENCE.",
-    "generatedDate": "2026-09-24",
-    "version": "1.0.0"
-  },
+  "isSynthetic": true,
+  "warning": "SYNTHETIC VALIDATION FIXTURES ONLY \u2014 NOT REAL FIELD OBSERVATIONS. Used to validate multi-vent site grouping, interval filtering, and negative survey rendering.",
+  "sources": [
+    {
+      "id": "syn-src-aerial-ir-2024",
+      "name": "Synthetic Post-Fire Aerial FLIR Survey Fixture",
+      "publisher": "PRBsim Synthetic Validation Suite",
+      "retrievalDate": "2026-09-24",
+      "url": "https://github.com/Bittermun/PRBsim",
+      "license": "CC0-1.0 (Synthetic Test Fixture)",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Synthetic test coordinates (\u00b115 m nominal)",
+      "limitations": "SYNTHETIC FIXTURE ONLY \u2014 Does not represent a real airborne thermal survey.",
+      "rawSha256": "synthetic-fixture-only",
+      "processedSha256": "synthetic-fixture-only",
+      "isSynthetic": true
+    },
+    {
+      "id": "syn-src-field-visit-2024",
+      "name": "Synthetic Ground Thermocouple Verification Fixture",
+      "publisher": "PRBsim Synthetic Validation Suite",
+      "retrievalDate": "2026-09-24",
+      "url": "https://github.com/Bittermun/PRBsim",
+      "license": "CC0-1.0 (Synthetic Test Fixture)",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Synthetic test coordinates (\u00b15 m nominal)",
+      "limitations": "SYNTHETIC FIXTURE ONLY \u2014 Does not represent a real field thermocouple measurement.",
+      "rawSha256": "synthetic-fixture-only",
+      "processedSha256": "synthetic-fixture-only",
+      "isSynthetic": true
+    },
+    {
+      "id": "syn-src-historical-lit",
+      "name": "Synthetic Historical Narrative Outcrop Report Fixture",
+      "publisher": "PRBsim Synthetic Validation Suite",
+      "retrievalDate": "2026-09-24",
+      "url": "https://github.com/Bittermun/PRBsim",
+      "license": "CC0-1.0 (Synthetic Test Fixture)",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Unknown / unmeasured historical narrative location",
+      "limitations": "SYNTHETIC FIXTURE ONLY \u2014 Demonstrates unknown coordinate precision (accuracyMeters: null) and pre-fire baseline ambiguity.",
+      "rawSha256": "synthetic-fixture-only",
+      "processedSha256": "synthetic-fixture-only",
+      "isSynthetic": true
+    }
+  ],
   "sites": [
     {
-      "id": "syn-site-birney-cluster",
-      "name": "Synthetic Tongue Divide Vent Complex A",
-      "groupingUncertainty": "unresolved_subsurface_connectivity",
-      "relatedVentIds": [
-        "syn-obs-vent-01",
-        "syn-obs-vent-02",
-        "syn-obs-vent-03"
-      ],
-      "geologySummary": "Anderson seam outcrop in steep ravine; thermal IR anomaly spans 180m; fractures show sulfur sublimation.",
-      "notes": "Three surface vents within 200m radius. Geophysical continuity unverified; treating as single potential combustion body with multiple release points."
-    },
-    {
-      "id": "syn-site-isolated-coulee",
-      "name": "Synthetic Otter Creek Outcrop B",
-      "groupingUncertainty": "isolated",
-      "relatedVentIds": [
-        "syn-obs-vent-04"
-      ],
-      "geologySummary": "Isolated Canyon coal seam exposure in cutbank.",
-      "notes": "Single vent with no adjacent thermal anomalies within 1.5 km."
-    }
-  ],
-  "observations": [
-    {
-      "id": "syn-obs-vent-01",
-      "siteId": "syn-site-birney-cluster",
-      "sourceId": "syn-src-aerial-ir-2024",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -106.2842,
-          45.1834
-        ]
-      },
-      "accuracyMeters": 15.0,
-      "observationDate": "2024-08-25",
-      "datePrecision": "day",
-      "endDate": null,
-      "method": "aerial_survey",
-      "reportedCondition": "Fuming fissure, surface temperature 142\u00b0C measured via FLIR",
-      "status": "sensor_detection",
-      "reportedCause": "Vegetation fire swept through ravine on 2024-08-23",
-      "verifiedEvidence": "Thermal imaging detection of 142\u00b0C hotspot at ground fissure; sulfur crystals observed on rim",
-      "analystInterpretation": "Probable ignition of weathered coal seam outcrop by Remington firefront, though pre-existing deep smolder cannot be ruled out without pre-fire baseline",
-      "lastObservedDate": "2024-08-25",
-      "ongoingActivityStatus": "unknown",
-      "isSynthetic": true
-    },
-    {
-      "id": "syn-obs-vent-02",
-      "siteId": "syn-site-birney-cluster",
-      "sourceId": "syn-src-aerial-ir-2024",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -106.2825,
-          45.1841
-        ]
-      },
-      "accuracyMeters": 20.0,
-      "observationDate": "2024-08-25",
-      "datePrecision": "day",
-      "endDate": null,
-      "method": "aerial_survey",
-      "reportedCondition": "Smoke venting from subsidence sinkhole",
-      "status": "sensor_detection",
-      "reportedCause": "Unknown",
-      "verifiedEvidence": "Visible smoke column and localized thermal anomaly (98\u00b0C)",
-      "analystInterpretation": "Secondary ventilation point connected to same subterranean burning body as syn-obs-vent-01",
-      "lastObservedDate": "2024-08-25",
-      "ongoingActivityStatus": "unknown",
-      "isSynthetic": true
-    },
-    {
-      "id": "syn-obs-vent-03",
-      "siteId": "syn-site-birney-cluster",
-      "sourceId": "syn-src-field-visit-2024",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -106.2818,
-          45.1829
-        ]
-      },
-      "accuracyMeters": 5.0,
-      "observationDate": "2024-09-05",
-      "datePrecision": "day",
-      "endDate": null,
-      "method": "field_visit",
-      "reportedCondition": "Surface subsidence fissure, CO concentration > 120 ppm, rock temperature 210\u00b0C",
-      "status": "field_confirmed",
-      "reportedCause": "Remington wildfire",
-      "verifiedEvidence": "Multi-gas detector CO > 120 ppm, thermocouple probe 210\u00b0C at 0.5m depth",
-      "analystInterpretation": "Active subsurface coal combustion. Gas chemistry confirms sub-surface oxidation.",
-      "lastObservedDate": "2024-09-05",
-      "ongoingActivityStatus": "unknown",
-      "isSynthetic": true
-    },
-    {
-      "id": "syn-obs-vent-04",
-      "siteId": "syn-site-isolated-coulee",
-      "sourceId": "syn-src-historical-lit",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -106.152,
-          45.312
-        ]
-      },
-      "accuracyMeters": 500.0,
-      "observationDate": "1978",
-      "datePrecision": "year",
-      "endDate": null,
-      "method": "historical_literature",
-      "reportedCondition": "Burning coal outcrop noted in field notes",
-      "status": "unverified_report",
-      "reportedCause": "Spontaneous combustion",
-      "verifiedEvidence": "Historical USGS open-file report narrative mention",
-      "analystInterpretation": "Pre-dates 2024 wildfire by decades; illustrates persistent historical baseline",
-      "lastObservedDate": "1978-07-01",
-      "ongoingActivityStatus": "unknown",
-      "isSynthetic": true
-    }
-  ],
-  "surveys": [
-    {
-      "id": "syn-survey-neg-01",
-      "sourceId": "syn-src-aerial-ir-2024",
-      "surveyDate": "2024-08-28",
-      "method": "FLIR aerial thermal reconnaissance",
-      "detectionLimitDescription": "Surface temperature elevation >= 15\u00b0C above ambient baseline, clear skies, pixel resolution 2.5m",
-      "negativeResultReported": true,
-      "footprintGeometry": {
+      "id": "syn-site-badger-creek-complex",
+      "name": "[SYNTHETIC] Badger Creek Multi-Vent Coal Seam Complex",
+      "coalSeam": "Anderson-Dietz Coal Bed",
+      "groupingUncertainty": "unresolved_multi_vent",
+      "groupingNotes": "SYNTHETIC TEST CASE: Three distinct surface fumaroles/vents distributed along 450m of clinker outcrop escarpment. Without subsurface drilling or geophysical resistivity, it is unresolved whether these represent one continuous underground combustion front or three independent ignitions.",
+      "boundaryGeometry": {
         "type": "Polygon",
         "coordinates": [
           [
             [
-              -106.4,
-              45.1
+              -106.315,
+              45.022
             ],
             [
-              -106.32,
-              45.1
+              -106.302,
+              45.022
             ],
             [
-              -106.32,
-              45.16
+              -106.302,
+              45.031
             ],
             [
-              -106.4,
-              45.16
+              -106.315,
+              45.031
             ],
             [
-              -106.4,
-              45.1
+              -106.315,
+              45.022
             ]
           ]
         ]
       },
-      "findings": "Zero surface thermal anomalies detected above 15\u00b0C threshold within surveyed 48 km\u00b2 sector. Does NOT rule out deep, well-insulated coal combustion without surface fissure expression.",
-      "notes": "Survey absence is bounded by date, footprint, and instrument detection limit; must never be interpreted as definitive absence of subterranean heat.",
       "isSynthetic": true
+    },
+    {
+      "id": "syn-site-preexisting-baseline",
+      "name": "[SYNTHETIC] Pre-Existing 1978 Outcrop Burn Site",
+      "coalSeam": "Canyon Coal Bed",
+      "groupingUncertainty": "confirmed_single_body",
+      "groupingNotes": "SYNTHETIC TEST CASE: Illustrates a historical coal seam fire documented prior to the 2024 Remington Wildfire, testing temporal filtering so pre-existing coal fires are not misclassified as newly ignited by the 2024 surface fire.",
+      "boundaryGeometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -106.195,
+              45.11
+            ],
+            [
+              -106.185,
+              45.11
+            ],
+            [
+              -106.185,
+              45.118
+            ],
+            [
+              -106.195,
+              45.118
+            ],
+            [
+              -106.195,
+              45.11
+            ]
+          ]
+        ]
+      },
+      "isSynthetic": true
+    }
+  ],
+  "observations": [
+    {
+      "id": "syn-obs-001",
+      "siteId": "syn-site-badger-creek-complex",
+      "label": "[SYNTHETIC] Badger Creek Vent A (West Fumarole)",
+      "observationDate": "2024-09-02",
+      "endDate": "2024-09-18",
+      "datePrecision": "day",
+      "lastObservedDate": "2024-09-18",
+      "status": "sensor_detection",
+      "evidenceMethods": [
+        "aerial_ir",
+        "visual_smoke"
+      ],
+      "accuracyMeters": 15,
+      "sourceId": "syn-src-aerial-ir-2024",
+      "notes": "SYNTHETIC FIXTURE: Post-wildfire thermal anomaly along slump fracture. Demonstrates sensor-level detection awaiting ground thermocouple confirmation.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.311,
+          45.026
+        ]
+      }
+    },
+    {
+      "id": "syn-obs-002",
+      "siteId": "syn-site-badger-creek-complex",
+      "label": "[SYNTHETIC] Badger Creek Vent B (East Fissure)",
+      "observationDate": "2024-09-05",
+      "datePrecision": "day",
+      "lastObservedDate": "2024-09-25",
+      "status": "field_confirmed",
+      "evidenceMethods": [
+        "ground_thermocouple",
+        "gas_sampling"
+      ],
+      "accuracyMeters": 5,
+      "sourceId": "syn-src-field-visit-2024",
+      "notes": "SYNTHETIC FIXTURE: Ground thermocouple probe recorded 340\u00b0C at 0.8m depth with coal-tar condensates. Co-located in same site complex as Vent A.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.305,
+          45.027
+        ]
+      }
+    },
+    {
+      "id": "syn-obs-003",
+      "siteId": "syn-site-preexisting-baseline",
+      "label": "[SYNTHETIC] Canyon Seam Historic Outcrop Vent (1978 Baseline)",
+      "observationDate": "1978-07-01",
+      "datePrecision": "year",
+      "lastObservedDate": "2024-09-10",
+      "status": "unverified_report",
+      "evidenceMethods": [
+        "historical_record"
+      ],
+      "accuracyMeters": null,
+      "sourceId": "syn-src-historical-lit",
+      "notes": "SYNTHETIC FIXTURE: Pre-existing coal seam fire predating the August 2024 Remington Wildfire. Coordinate accuracy is unknown (null) to verify that missing accuracy is never fabricated as \u00b150m.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.19,
+          45.114
+        ]
+      }
+    }
+  ],
+  "surveys": [
+    {
+      "id": "syn-survey-null-bench-2024",
+      "surveyName": "[SYNTHETIC] Post-Fire UAV Thermal Transect Sector 4 (Negative Result)",
+      "surveyDate": "2024-09-12",
+      "method": "Airborne FLIR Thermal Infrared Sweep",
+      "result": "no_thermal_anomaly_detected",
+      "sourceId": "syn-src-aerial-ir-2024",
+      "notes": "SYNTHETIC FIXTURE: Demonstrates explicit representation of bounded negative survey coverage (no subsurface thermal anomalies >5\u00b0C above ambient detected).",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -106.05,
+              45.08
+            ],
+            [
+              -105.95,
+              45.08
+            ],
+            [
+              -105.95,
+              45.15
+            ],
+            [
+              -106.05,
+              45.15
+            ],
+            [
+              -106.05,
+              45.08
+            ]
+          ]
+        ]
+      }
     }
   ]
 }

@@ -1,487 +1,533 @@
 /**
- * Idempotent Layer Manager for PRB Research Overlays
- * 
- * - Handles style reloads safely on 'style.load'
- * - Prevents recursive re-render loops
- * - Preserves layer visual hierarchy
- * - Binds click and hover listeners with proper hit-testing
+ * MapLibre GL JS Evidence Layers for PRB Coal-Fire Explorer
+ *
+ * Implements color-blind-safe cartographic symbology (color + radius + stroke style) for:
+ * 1. Geological Context (Clinker deposits & Coal outcrops — quarantined schematic fixtures in synthetic mode)
+ * 2. Wildfire Perimeters (2024 Remington Fire final boundary, polygon date 2025-01-15)
+ * 3. Bounded Negative Survey Coverage Polygons
+ * 4. Multi-Vent Site Complex Boundaries
+ * 5. Point & Polygon Coal-Fire Observations (differentiated by VerificationStatus color, radius, and stroke)
+ * 6. Hit-priority click resolution so overlapping layers select the highest-priority feature
  */
 
 import type maplibregl from 'maplibre-gl';
-import type { Observation, FirePerimeter, GeologicalFeature, Survey, Site } from '../data/types';
-import type { FilteredEvidenceResult } from '../data/select';
+import type { FilteredEvidenceResult } from '../data/select.ts';
 
-export interface LayerSelectionCallback {
-    (selection: {
-        type: 'observation' | 'perimeter' | 'geology' | 'survey' | 'site';
-        data: any;
-    } | null): void;
-}
-
-const SOURCES = {
-    geology: 'prb-geology-source',
-    surveys: 'prb-surveys-source',
-    perimeters: 'prb-perimeters-source',
-    sites: 'prb-sites-source',
-    observations: 'prb-observations-source'
+export const LAYER_IDS = {
+    geologyFill: 'prb-geology-fill',
+    geologyOutline: 'prb-geology-outline',
+    perimetersFill: 'prb-perimeters-fill',
+    perimetersOutline: 'prb-perimeters-outline',
+    surveysFill: 'prb-surveys-fill',
+    surveysOutline: 'prb-surveys-outline',
+    sitesOutline: 'prb-sites-outline',
+    observationsPolygonFill: 'prb-observations-polygon-fill',
+    observationsPolygonOutline: 'prb-observations-polygon-outline',
+    observationsPoint: 'prb-observations-point',
+    observationsHalo: 'prb-observations-halo',
+    observationsLabel: 'prb-observations-label',
 };
 
-const EMPTY_GEOJSON: GeoJSON.FeatureCollection = {
-    type: 'FeatureCollection',
-    features: []
+export const SOURCE_IDS = {
+    geology: 'source-prb-geology',
+    perimeters: 'source-prb-perimeters',
+    surveys: 'source-prb-surveys',
+    sites: 'source-prb-sites',
+    observations: 'source-prb-observations',
 };
 
-function buildGeologyGeoJson(geology: GeologicalFeature[]): GeoJSON.FeatureCollection {
-    return {
+const boundMapClickHandlers = new WeakMap<maplibregl.Map, (e: maplibregl.MapMouseEvent) => void>();
+const boundMapHoverMaps = new WeakSet<maplibregl.Map>();
+
+/**
+ * Converts FilteredEvidenceResult into GeoJSON FeatureCollections for MapLibre sources.
+ */
+export function buildLayerGeoJsons(filtered: FilteredEvidenceResult) {
+    const geologyFc: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
-        features: geology.map(g => ({
+        features: filtered.geologicalFeatures.map(g => ({
             type: 'Feature',
             id: g.id,
             properties: {
                 id: g.id,
-                name: g.name,
-                category: g.category,
-                age: g.age,
-                description: g.description,
-                combustionSusceptibility: g.combustionSusceptibility || '',
-                significance: g.significance || '',
-                provenance: g.provenance
+                unitName: g.unitName,
+                unitType: g.unitType,
+                formation: g.formation,
+                coalBed: g.coalBed,
+                scale: g.scale,
+                notes: g.notes,
+                isSynthetic: g.isSynthetic
             },
             geometry: g.geometry
         }))
     };
-}
 
-function buildSurveysGeoJson(surveys: Survey[]): GeoJSON.FeatureCollection {
-    return {
+    const perimetersFc: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
-        features: surveys.map(s => ({
-            type: 'Feature',
-            id: s.id,
-            properties: {
-                id: s.id,
-                surveyDate: s.surveyDate,
-                method: s.method,
-                detectionLimit: s.detectionLimitDescription,
-                negativeResultReported: s.negativeResultReported,
-                findings: s.findings,
-                notes: s.notes,
-                isSynthetic: s.isSynthetic
-            },
-            geometry: s.footprintGeometry
-        }))
-    };
-}
-
-function buildPerimetersGeoJson(perimeters: FirePerimeter[]): GeoJSON.FeatureCollection {
-    return {
-        type: 'FeatureCollection',
-        features: perimeters.map(p => ({
+        features: filtered.wildfirePerimeters.map(p => ({
             type: 'Feature',
             id: p.id,
             properties: {
                 id: p.id,
                 incidentName: p.incidentName,
-                uniqueId: p.uniqueId,
-                acres: p.acres,
-                mapMethod: p.mapMethod,
+                irwinId: p.irwinId,
+                uniqueFireId: p.uniqueFireId,
+                gisAcres: p.gisAcres,
                 discoveryDate: p.discoveryDate,
                 containmentDate: p.containmentDate,
                 controlDate: p.controlDate,
-                counties: p.counties.join(', ')
+                mapDate: p.mapDate,
+                temporalRole: p.temporalRole,
+                pooState: p.pooState,
+                pooCounty: p.pooCounty,
+                fireCause: p.fireCause,
+                reportedCauseGeneral: p.reportedCauseGeneral,
+                reportedCauseSpecific: p.reportedCauseSpecific,
+                isFireCauseInvestigated: p.isFireCauseInvestigated,
+                notes: p.notes,
+                isSynthetic: p.isSynthetic
             },
             geometry: p.geometry
         }))
     };
-}
 
-function buildSitesGeoJson(sites: Site[], observations: Observation[]): GeoJSON.FeatureCollection {
-    // Generate buffer envelopes around multi-vent sites
-    const features: GeoJSON.Feature[] = [];
-
-    sites.forEach(site => {
-        if (site.groupingUncertainty === 'unresolved_subsurface_connectivity') {
-            const memberVents = observations.filter(o => site.relatedVentIds.includes(o.id));
-            if (memberVents.length > 1) {
-                const coords = memberVents
-                    .filter(v => v.geometry.type === 'Point')
-                    .map(v => (v.geometry as GeoJSON.Point).coordinates);
-
-                if (coords.length > 1) {
-                    // Create bounding box polygon buffer for the cluster
-                    const lons = coords.map(c => c[0]);
-                    const lats = coords.map(c => c[1]);
-                    const pad = 0.003;
-                    const minX = Math.min(...lons) - pad;
-                    const maxX = Math.max(...lons) + pad;
-                    const minY = Math.min(...lats) - pad;
-                    const maxY = Math.max(...lats) + pad;
-
-                    features.push({
-                        type: 'Feature',
-                        id: `site-env-${site.id}`,
-                        properties: {
-                            siteId: site.id,
-                            name: site.name,
-                            groupingUncertainty: site.groupingUncertainty,
-                            ventCount: memberVents.length,
-                            notes: site.notes
-                        },
-                        geometry: {
-                            type: 'Polygon',
-                            coordinates: [[
-                                [minX, minY],
-                                [maxX, minY],
-                                [maxX, maxY],
-                                [minX, maxY],
-                                [minX, minY]
-                            ]]
-                        }
-                    });
-                }
-            }
-        }
-    });
-
-    return {
+    const surveysFc: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
-        features
+        features: filtered.surveys.map(sv => ({
+            type: 'Feature',
+            id: sv.id,
+            properties: {
+                id: sv.id,
+                surveyName: sv.surveyName,
+                surveyDate: sv.surveyDate,
+                method: sv.method,
+                result: sv.result,
+                notes: sv.notes,
+                isSynthetic: sv.isSynthetic
+            },
+            geometry: sv.geometry
+        }))
     };
-}
 
-function buildObservationsGeoJson(observations: Observation[]): GeoJSON.FeatureCollection {
-    return {
+    const sitesFc: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
-        features: observations.map(o => ({
+        features: filtered.sites
+            .filter(s => s.boundaryGeometry !== null)
+            .map(s => ({
+                type: 'Feature',
+                id: s.id,
+                properties: {
+                    id: s.id,
+                    name: s.name,
+                    coalSeam: s.coalSeam,
+                    groupingUncertainty: s.groupingUncertainty,
+                    groupingNotes: s.groupingNotes,
+                    isSynthetic: s.isSynthetic
+                },
+                geometry: s.boundaryGeometry!
+            }))
+    };
+
+    const observationsFc: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: filtered.observations.map(o => ({
             type: 'Feature',
             id: o.id,
             properties: {
                 id: o.id,
-                siteId: o.siteId || '',
-                sourceId: o.sourceId,
+                siteId: o.siteId,
+                label: o.label,
                 observationDate: o.observationDate,
+                endDate: o.endDate || '',
                 datePrecision: o.datePrecision,
-                method: o.method,
+                lastObservedDate: o.lastObservedDate || '',
                 status: o.status,
-                reportedCondition: o.reportedCondition,
-                reportedCause: o.reportedCause,
-                verifiedEvidence: o.verifiedEvidence,
-                analystInterpretation: o.analystInterpretation,
-                lastObservedDate: o.lastObservedDate,
-                ongoingActivityStatus: o.ongoingActivityStatus,
+                evidenceMethods: o.evidenceMethods.join(', '),
+                accuracyMeters: o.accuracyMeters,
+                sourceId: o.sourceId,
+                notes: o.notes,
                 isSynthetic: o.isSynthetic
             },
             geometry: o.geometry
         }))
     };
+
+    return { geologyFc, perimetersFc, surveysFc, sitesFc, observationsFc };
 }
 
-export class ResearchLayerManager {
-    private clickHandlersBound = false;
-    private currentResult: FilteredEvidenceResult | null = null;
-    private onSelect: LayerSelectionCallback | null = null;
+/**
+ * Initializes or updates all PRB evidence sources and layers on the MapLibre instance.
+ */
+export function initEvidenceLayers(
+    map: maplibregl.Map,
+    filtered: FilteredEvidenceResult,
+    onFeatureClick: (featureType: 'observation' | 'perimeter' | 'geology' | 'survey', props: Record<string, any>) => void
+): void {
+    const { geologyFc, perimetersFc, surveysFc, sitesFc, observationsFc } = buildLayerGeoJsons(filtered);
 
-    constructor(private map: maplibregl.Map) {}
-
-    /**
-     * Initializes or updates all research data sources and visual layers.
-     */
-    public syncLayers(result: FilteredEvidenceResult, onSelect?: LayerSelectionCallback): void {
-        this.currentResult = result;
-        if (onSelect) this.onSelect = onSelect;
-
-        this.ensureSourcesExist();
-        this.ensureLayersExist();
-        this.updateSourceData(result);
-        if (!this.clickHandlersBound) {
-            this.bindInteractionHandlers();
-            this.clickHandlersBound = true;
-        }
+    if (map.getSource(SOURCE_IDS.geology)) {
+        updateEvidenceLayers(map, filtered);
+        return;
     }
 
-    /**
-     * Called when map style is reloaded to reconstruct layers idempotently.
-     */
-    public onStyleReload(): void {
-        if (!this.currentResult) return;
-        this.ensureSourcesExist();
-        this.ensureLayersExist();
-        this.updateSourceData(this.currentResult);
+    // Add Sources
+    map.addSource(SOURCE_IDS.geology, { type: 'geojson', data: geologyFc });
+    map.addSource(SOURCE_IDS.perimeters, { type: 'geojson', data: perimetersFc });
+    map.addSource(SOURCE_IDS.surveys, { type: 'geojson', data: surveysFc });
+    map.addSource(SOURCE_IDS.sites, { type: 'geojson', data: sitesFc });
+    map.addSource(SOURCE_IDS.observations, { type: 'geojson', data: observationsFc });
+
+    // 1. Geological Context Fill & Outline
+    map.addLayer({
+        id: LAYER_IDS.geologyFill,
+        type: 'fill',
+        source: SOURCE_IDS.geology,
+        paint: {
+            'fill-color': [
+                'match',
+                ['get', 'unitType'],
+                'clinker_deposit', '#ea580c',
+                'coal_outcrop', '#ca8a04',
+                '#94a3b8'
+            ],
+            'fill-opacity': [
+                'match',
+                ['get', 'unitType'],
+                'clinker_deposit', 0.18,
+                'coal_outcrop', 0.07,
+                0.1
+            ]
+        }
+    });
+
+    map.addLayer({
+        id: LAYER_IDS.geologyOutline,
+        type: 'line',
+        source: SOURCE_IDS.geology,
+        paint: {
+            'line-color': [
+                'match',
+                ['get', 'unitType'],
+                'clinker_deposit', '#c2410c',
+                'coal_outcrop', '#a16207',
+                '#64748b'
+            ],
+            'line-width': [
+                'match',
+                ['get', 'unitType'],
+                'clinker_deposit', 1.5,
+                1.0
+            ],
+            'line-dasharray': [3, 2],
+            'line-opacity': 0.7
+        }
+    });
+
+    // 2. Bounded Survey Coverage (differentiating negative vs. anomalies_detected surveys)
+    map.addLayer({
+        id: LAYER_IDS.surveysFill,
+        type: 'fill',
+        source: SOURCE_IDS.surveys,
+        paint: {
+            'fill-color': [
+                'match',
+                ['get', 'result'],
+                'anomalies_detected', '#d97706',
+                '#0284c7'
+            ],
+            'fill-opacity': 0.14
+        }
+    });
+
+    map.addLayer({
+        id: LAYER_IDS.surveysOutline,
+        type: 'line',
+        source: SOURCE_IDS.surveys,
+        paint: {
+            'line-color': [
+                'match',
+                ['get', 'result'],
+                'anomalies_detected', '#b45309',
+                '#0369a1'
+            ],
+            'line-width': 1.8,
+            'line-dasharray': [2, 2]
+        }
+    });
+
+    // 3. Wildfire Perimeters (2024 Remington Fire final boundary)
+    map.addLayer({
+        id: LAYER_IDS.perimetersFill,
+        type: 'fill',
+        source: SOURCE_IDS.perimeters,
+        paint: {
+            'fill-color': '#dc2626',
+            'fill-opacity': 0.14
+        }
+    });
+
+    map.addLayer({
+        id: LAYER_IDS.perimetersOutline,
+        type: 'line',
+        source: SOURCE_IDS.perimeters,
+        paint: {
+            'line-color': '#b91c1c',
+            'line-width': 2.5,
+            'line-opacity': 0.9
+        }
+    });
+
+    // 4. Multi-Vent Site Complex Boundaries
+    map.addLayer({
+        id: LAYER_IDS.sitesOutline,
+        type: 'line',
+        source: SOURCE_IDS.sites,
+        paint: {
+            'line-color': '#f59e0b',
+            'line-width': 2.2,
+            'line-dasharray': [4, 2]
+        }
+    });
+
+    // 5a. Polygon Coal-Fire Observations (when an observation has Polygon geometry)
+    map.addLayer({
+        id: LAYER_IDS.observationsPolygonFill,
+        type: 'fill',
+        source: SOURCE_IDS.observations,
+        filter: ['==', ['geometry-type'], 'Polygon'],
+        paint: {
+            'fill-color': [
+                'match',
+                ['get', 'status'],
+                'field_confirmed', '#059669',
+                'sensor_detection', '#d97706',
+                'unverified_report', '#7c3aed',
+                'extinguished', '#64748b',
+                'reignited_vegetation', '#dc2626',
+                '#0284c7'
+            ],
+            'fill-opacity': 0.28
+        }
+    });
+
+    map.addLayer({
+        id: LAYER_IDS.observationsPolygonOutline,
+        type: 'line',
+        source: SOURCE_IDS.observations,
+        filter: ['==', ['geometry-type'], 'Polygon'],
+        paint: {
+            'line-color': '#0f172a',
+            'line-width': 2.2
+        }
+    });
+
+    // 5b. Point Coal-Fire Observations (Outer Halo & Core Circle differentiated by color, radius, and stroke)
+    map.addLayer({
+        id: LAYER_IDS.observationsHalo,
+        type: 'circle',
+        source: SOURCE_IDS.observations,
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: {
+            'circle-radius': [
+                'match',
+                ['get', 'status'],
+                'field_confirmed', 13,
+                'sensor_detection', 11,
+                'reignited_vegetation', 14,
+                9
+            ],
+            'circle-color': [
+                'match',
+                ['get', 'status'],
+                'field_confirmed', '#059669',
+                'sensor_detection', '#d97706',
+                'unverified_report', '#7c3aed',
+                'extinguished', '#64748b',
+                'reignited_vegetation', '#dc2626',
+                '#0284c7'
+            ],
+            'circle-opacity': 0.25,
+            'circle-stroke-width': [
+                'match',
+                ['get', 'status'],
+                'unverified_report', 1.5,
+                0
+            ],
+            'circle-stroke-color': '#5b21b6'
+        }
+    });
+
+    map.addLayer({
+        id: LAYER_IDS.observationsPoint,
+        type: 'circle',
+        source: SOURCE_IDS.observations,
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: {
+            'circle-radius': [
+                'match',
+                ['get', 'status'],
+                'field_confirmed', 8,
+                'sensor_detection', 7,
+                'unverified_report', 5.5,
+                'extinguished', 5,
+                'reignited_vegetation', 9,
+                6
+            ],
+            'circle-color': [
+                'match',
+                ['get', 'status'],
+                'field_confirmed', '#059669',
+                'sensor_detection', '#d97706',
+                'unverified_report', '#7c3aed',
+                'extinguished', '#64748b',
+                'reignited_vegetation', '#dc2626',
+                '#0284c7'
+            ],
+            'circle-stroke-width': [
+                'match',
+                ['get', 'status'],
+                'field_confirmed', 3,
+                'sensor_detection', 2.5,
+                'unverified_report', 1.5,
+                'reignited_vegetation', 3,
+                1.5
+            ],
+            'circle-stroke-color': [
+                'match',
+                ['get', 'status'],
+                'field_confirmed', '#ffffff',
+                'sensor_detection', '#1e293b',
+                'unverified_report', '#ffffff',
+                'reignited_vegetation', '#fef08a',
+                '#ffffff'
+            ]
+        }
+    });
+
+    // 6. Observation Labels
+    map.addLayer({
+        id: LAYER_IDS.observationsLabel,
+        type: 'symbol',
+        source: SOURCE_IDS.observations,
+        layout: {
+            'text-field': ['get', 'label'],
+            'text-size': 11,
+            'text-offset': [0, 1.3],
+            'text-anchor': 'top',
+            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+            'text-optional': true
+        },
+        paint: {
+            'text-color': '#0f172a',
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 1.8
+        }
+    });
+
+    // Unified Hit-Priority Click Listener (prevents overlapping perimeter/geology from overwriting observation clicks)
+    const priorityLayers = [
+        LAYER_IDS.observationsPoint,
+        LAYER_IDS.observationsPolygonFill,
+        LAYER_IDS.surveysFill,
+        LAYER_IDS.perimetersFill,
+        LAYER_IDS.geologyFill
+    ];
+
+    const prevHandler = boundMapClickHandlers.get(map);
+    if (prevHandler) {
+        map.off('click', prevHandler);
     }
 
-    private ensureSourcesExist(): void {
-        if (!this.map.getSource(SOURCES.geology)) {
-            this.map.addSource(SOURCES.geology, { type: 'geojson', data: EMPTY_GEOJSON });
-        }
-        if (!this.map.getSource(SOURCES.surveys)) {
-            this.map.addSource(SOURCES.surveys, { type: 'geojson', data: EMPTY_GEOJSON });
-        }
-        if (!this.map.getSource(SOURCES.perimeters)) {
-            this.map.addSource(SOURCES.perimeters, { type: 'geojson', data: EMPTY_GEOJSON });
-        }
-        if (!this.map.getSource(SOURCES.sites)) {
-            this.map.addSource(SOURCES.sites, { type: 'geojson', data: EMPTY_GEOJSON });
-        }
-        if (!this.map.getSource(SOURCES.observations)) {
-            this.map.addSource(SOURCES.observations, { type: 'geojson', data: EMPTY_GEOJSON });
-        }
-    }
+    const clickHandler = (e: maplibregl.MapMouseEvent) => {
+        const activeLayers = priorityLayers.filter(id => Boolean(map.getLayer(id)));
+        if (activeLayers.length === 0) return;
+        const hits = map.queryRenderedFeatures(e.point, { layers: activeLayers });
+        if (!hits || hits.length === 0) return;
 
-    private ensureLayersExist(): void {
-        // 1. Geology Layers
-        if (!this.map.getLayer('prb-geology-fill')) {
-            this.map.addLayer({
-                id: 'prb-geology-fill',
-                type: 'fill',
-                source: SOURCES.geology,
-                paint: {
-                    'fill-color': [
-                        'match',
-                        ['get', 'category'],
-                        'historic_clinker_outcrop', '#ea580c',  // Burnt orange for clinker
-                        'coal_bearing_strata', '#713f12',        // Muted raw umber for coal strata
-                        'sedimentary_overburden', '#64748b',    // Neutral slate for Wasatch overburden
-                        '#94a3b8'
-                    ],
-                    'fill-opacity': [
-                        'match',
-                        ['get', 'category'],
-                        'historic_clinker_outcrop', 0.25,
-                        'coal_bearing_strata', 0.12,
-                        0.08
-                    ]
+        // Pick the highest-priority layer match
+        for (const layerId of activeLayers) {
+            const match = hits.find(f => f.layer.id === layerId);
+            if (match && match.properties) {
+                if (layerId === LAYER_IDS.observationsPoint || layerId === LAYER_IDS.observationsPolygonFill) {
+                    onFeatureClick('observation', match.properties);
+                } else if (layerId === LAYER_IDS.surveysFill) {
+                    onFeatureClick('survey', match.properties);
+                } else if (layerId === LAYER_IDS.perimetersFill) {
+                    onFeatureClick('perimeter', match.properties);
+                } else if (layerId === LAYER_IDS.geologyFill) {
+                    onFeatureClick('geology', match.properties);
                 }
-            });
-        }
-
-        if (!this.map.getLayer('prb-geology-line')) {
-            this.map.addLayer({
-                id: 'prb-geology-line',
-                type: 'line',
-                source: SOURCES.geology,
-                paint: {
-                    'line-color': [
-                        'match',
-                        ['get', 'category'],
-                        'historic_clinker_outcrop', '#c2410c',
-                        'coal_bearing_strata', '#854d0e',
-                        '#475569'
-                    ],
-                    'line-width': 1.2,
-                    'line-dasharray': [3, 2]
-                }
-            });
-        }
-
-        // 2. Negative Survey Footprints
-        if (!this.map.getLayer('prb-surveys-fill')) {
-            this.map.addLayer({
-                id: 'prb-surveys-fill',
-                type: 'fill',
-                source: SOURCES.surveys,
-                paint: {
-                    'fill-color': '#0284c7', // Cyan/sky blue
-                    'fill-opacity': 0.15
-                }
-            });
-        }
-
-        if (!this.map.getLayer('prb-surveys-line')) {
-            this.map.addLayer({
-                id: 'prb-surveys-line',
-                type: 'line',
-                source: SOURCES.surveys,
-                paint: {
-                    'line-color': '#0284c7',
-                    'line-width': 1.8,
-                    'line-dasharray': [4, 4]
-                }
-            });
-        }
-
-        // 3. Wildfire Perimeter
-        if (!this.map.getLayer('prb-perimeters-fill')) {
-            this.map.addLayer({
-                id: 'prb-perimeters-fill',
-                type: 'fill',
-                source: SOURCES.perimeters,
-                paint: {
-                    'fill-color': '#dc2626', // Crimson
-                    'fill-opacity': 0.14
-                }
-            });
-        }
-
-        if (!this.map.getLayer('prb-perimeters-line')) {
-            this.map.addLayer({
-                id: 'prb-perimeters-line',
-                type: 'line',
-                source: SOURCES.perimeters,
-                paint: {
-                    'line-color': '#b91c1c',
-                    'line-width': 2.4
-                }
-            });
-        }
-
-        // 4. Multi-Vent Cluster Envelopes (Preserves Grouping Uncertainty)
-        if (!this.map.getLayer('prb-sites-envelope')) {
-            this.map.addLayer({
-                id: 'prb-sites-envelope',
-                type: 'line',
-                source: SOURCES.sites,
-                paint: {
-                    'line-color': '#d97706',
-                    'line-width': 1.5,
-                    'line-dasharray': [2, 2]
-                }
-            });
-        }
-
-        if (!this.map.getLayer('prb-sites-fill')) {
-            this.map.addLayer({
-                id: 'prb-sites-fill',
-                type: 'fill',
-                source: SOURCES.sites,
-                paint: {
-                    'fill-color': '#d97706',
-                    'fill-opacity': 0.08
-                }
-            });
-        }
-
-        // 5. Observations (Points)
-        if (!this.map.getLayer('prb-observations-halo')) {
-            this.map.addLayer({
-                id: 'prb-observations-halo',
-                type: 'circle',
-                source: SOURCES.observations,
-                paint: {
-                    'circle-radius': 11,
-                    'circle-color': '#ffffff',
-                    'circle-opacity': 0.8
-                }
-            });
-        }
-
-        if (!this.map.getLayer('prb-observations-point')) {
-            this.map.addLayer({
-                id: 'prb-observations-point',
-                type: 'circle',
-                source: SOURCES.observations,
-                paint: {
-                    'circle-radius': 6.5,
-                    'circle-color': [
-                        'match',
-                        ['get', 'status'],
-                        'field_confirmed', '#059669',      // Emerald
-                        'sensor_detection', '#d97706',     // Amber
-                        'unverified_report', '#7c3aed',    // Violet
-                        'extinguished', '#64748b',         // Slate
-                        'reignited_vegetation', '#dc2626', // Red
-                        '#475569'
-                    ],
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#ffffff'
-                }
-            });
-        }
-
-        // Observation Labels
-        if (!this.map.getLayer('prb-observations-label')) {
-            this.map.addLayer({
-                id: 'prb-observations-label',
-                type: 'symbol',
-                source: SOURCES.observations,
-                layout: {
-                    'text-field': ['get', 'id'],
-                    'text-size': 10,
-                    'text-offset': [0, 1.2],
-                    'text-anchor': 'top',
-                    'text-font': ['Noto Sans Regular', 'Open Sans Regular']
-                },
-                paint: {
-                    'text-color': '#1e293b',
-                    'text-halo-color': '#ffffff',
-                    'text-halo-width': 1.5
-                }
-            });
-        }
-    }
-
-    private updateSourceData(result: FilteredEvidenceResult): void {
-        const geoSrc = this.map.getSource(SOURCES.geology) as maplibregl.GeoJSONSource | undefined;
-        if (geoSrc) geoSrc.setData(buildGeologyGeoJson(result.geologicalFeatures));
-
-        const survSrc = this.map.getSource(SOURCES.surveys) as maplibregl.GeoJSONSource | undefined;
-        if (survSrc) survSrc.setData(buildSurveysGeoJson(result.filteredSurveys));
-
-        const perimSrc = this.map.getSource(SOURCES.perimeters) as maplibregl.GeoJSONSource | undefined;
-        if (perimSrc) perimSrc.setData(buildPerimetersGeoJson(result.filteredPerimeters));
-
-        const siteSrc = this.map.getSource(SOURCES.sites) as maplibregl.GeoJSONSource | undefined;
-        if (siteSrc) siteSrc.setData(buildSitesGeoJson(result.activeSites, result.filteredObservations));
-
-        const obsSrc = this.map.getSource(SOURCES.observations) as maplibregl.GeoJSONSource | undefined;
-        if (obsSrc) obsSrc.setData(buildObservationsGeoJson(result.filteredObservations));
-    }
-
-    private bindInteractionHandlers(): void {
-        const clickableLayers = [
-            'prb-observations-point',
-            'prb-perimeters-fill',
-            'prb-surveys-fill',
-            'prb-geology-fill',
-            'prb-sites-fill'
-        ];
-
-        clickableLayers.forEach(layerId => {
-            this.map.on('mouseenter', layerId, () => {
-                this.map.getCanvas().style.cursor = 'pointer';
-            });
-            this.map.on('mouseleave', layerId, () => {
-                this.map.getCanvas().style.cursor = '';
-            });
-        });
-
-        // Click handler for observations
-        this.map.on('click', 'prb-observations-point', (e) => {
-            if (!e.features || !e.features[0] || !this.onSelect || !this.currentResult) return;
-            const props = e.features[0].properties;
-            const fullObs = this.currentResult.filteredObservations.find((o: Observation) => o.id === props.id);
-            if (fullObs) {
-                this.onSelect({ type: 'observation', data: fullObs });
+                return;
             }
-        });
+        }
+    };
 
-        // Click handler for perimeters
-        this.map.on('click', 'prb-perimeters-fill', (e) => {
-            if (!e.features || !e.features[0] || !this.onSelect || !this.currentResult) return;
-            const props = e.features[0].properties;
-            const fullPerim = this.currentResult.filteredPerimeters.find((p: FirePerimeter) => p.id === props.id);
-            if (fullPerim) {
-                this.onSelect({ type: 'perimeter', data: fullPerim });
-            }
-        });
+    boundMapClickHandlers.set(map, clickHandler);
+    map.on('click', clickHandler);
 
-        // Click handler for surveys
-        this.map.on('click', 'prb-surveys-fill', (e) => {
-            if (!e.features || !e.features[0] || !this.onSelect || !this.currentResult) return;
-            const props = e.features[0].properties;
-            const fullSurv = this.currentResult.filteredSurveys.find((s: Survey) => s.id === props.id);
-            if (fullSurv) {
-                this.onSelect({ type: 'survey', data: fullSurv });
-            }
-        });
+    // Cursor hover indicators (bound once per Map instance)
+    if (!boundMapHoverMaps.has(map)) {
+        boundMapHoverMaps.add(map);
+        for (const lid of priorityLayers) {
+            map.on('mouseenter', lid, () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', lid, () => {
+                map.getCanvas().style.cursor = '';
+            });
+        }
+    }
+}
 
-        // Click handler for geology
-        this.map.on('click', 'prb-geology-fill', (e) => {
-            if (!e.features || !e.features[0] || !this.onSelect || !this.currentResult) return;
-            const props = e.features[0].properties;
-            const fullGeo = this.currentResult.geologicalFeatures.find((g: GeologicalFeature) => g.id === props.id);
-            if (fullGeo) {
-                this.onSelect({ type: 'geology', data: fullGeo });
-            }
-        });
+/**
+ * Updates GeoJSON data in existing MapLibre sources when Timeline or Filters change.
+ */
+export function updateEvidenceLayers(
+    map: maplibregl.Map,
+    filtered: FilteredEvidenceResult
+): void {
+    const { geologyFc, perimetersFc, surveysFc, sitesFc, observationsFc } = buildLayerGeoJsons(filtered);
+
+    const setSource = (id: string, data: GeoJSON.FeatureCollection) => {
+        const src = map.getSource(id) as maplibregl.GeoJSONSource | undefined;
+        if (src && typeof src.setData === 'function') {
+            src.setData(data);
+        }
+    };
+
+    setSource(SOURCE_IDS.geology, geologyFc);
+    setSource(SOURCE_IDS.perimeters, perimetersFc);
+    setSource(SOURCE_IDS.surveys, surveysFc);
+    setSource(SOURCE_IDS.sites, sitesFc);
+    setSource(SOURCE_IDS.observations, observationsFc);
+}
+
+/**
+ * Toggles visibility of a layer group on the map.
+ */
+export function setLayerGroupVisibility(
+    map: maplibregl.Map,
+    group: 'geology' | 'perimeters' | 'surveys' | 'observations',
+    visible: boolean
+): void {
+    const vis = visible ? 'visible' : 'none';
+    const mapping: Record<string, string[]> = {
+        geology: [LAYER_IDS.geologyFill, LAYER_IDS.geologyOutline],
+        perimeters: [LAYER_IDS.perimetersFill, LAYER_IDS.perimetersOutline],
+        surveys: [LAYER_IDS.surveysFill, LAYER_IDS.surveysOutline],
+        observations: [
+            LAYER_IDS.sitesOutline,
+            LAYER_IDS.observationsPolygonFill,
+            LAYER_IDS.observationsPolygonOutline,
+            LAYER_IDS.observationsHalo,
+            LAYER_IDS.observationsPoint,
+            LAYER_IDS.observationsLabel
+        ]
+    };
+
+    for (const layerId of mapping[group] || []) {
+        if (map.getLayer(layerId)) {
+            map.setLayoutProperty(layerId, 'visibility', vis);
+        }
     }
 }

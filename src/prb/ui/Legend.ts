@@ -1,10 +1,10 @@
 /**
  * Cartographic Legend & Layer Control for PRB Evidence Explorer
- * 
- * - Symbol key distinguishing shape, line style, and verification badges
- * - Layer visibility controls
- * - Basemap theme switcher
- * - Camera perspective toggle (2D Planimetric vs Oblique Angle)
+ *
+ * - Symbol key distinguishing shape, radius/stroke style, and verification badges
+ * - Explicit retrospective final-footprint label for the 2024 Remington Wildfire perimeter (map date 2025-01-15)
+ * - Explicit synthetic/schematic label for regional geology context polygons
+ * - Layer visibility controls, basemap switcher, and camera perspective toggle
  */
 
 export interface LayerVisibilityState {
@@ -35,6 +35,10 @@ export class MapLegend {
         this.render();
     }
 
+    public getLayerState(): LayerVisibilityState {
+        return { ...this.state };
+    }
+
     public setOnLayerToggle(cb: (state: LayerVisibilityState) => void): void {
         this.onLayerToggleCallback = cb;
     }
@@ -51,13 +55,13 @@ export class MapLegend {
         this.container.innerHTML = `
             <div class="legend-card">
                 <div class="legend-header">
-                    <h4>MAP LAYERS & SYMBOLOGY</h4>
+                    <h4>MAP LAYERS &amp; SYMBOLOGY</h4>
                 </div>
 
                 <div class="legend-section">
-                    <span class="legend-subhead">CONTROLS & PERSPECTIVE</span>
+                    <span class="legend-subhead">CONTROLS &amp; PERSPECTIVE</span>
                     <div class="controls-row">
-                        <button class="legend-toggle-btn" id="btn-toggle-perspective" title="Toggle between 2D North-Up Planimetric view and 30-degree Oblique camera pitch">
+                        <button class="legend-toggle-btn" id="btn-toggle-perspective" title="Toggle between 2D North-Up Planimetric view and 35-degree Oblique camera pitch">
                             📐 VIEW: <span id="perspective-label">2D NORTH-UP</span>
                         </button>
                     </div>
@@ -76,36 +80,37 @@ export class MapLegend {
                     <label class="layer-toggle-label">
                         <input type="checkbox" id="layer-perim" ${this.state.showPerimeters ? 'checked' : ''} />
                         <span class="swatch swatch-perim"></span>
-                        <span>Remington Wildfire Perimeter (196k ac)</span>
+                        <span>Remington Final Perimeter (196.4k ac; Map Date 2025-01-15, Static Context)</span>
                     </label>
                     <label class="layer-toggle-label">
                         <input type="checkbox" id="layer-obs" ${this.state.showObservations ? 'checked' : ''} />
                         <span class="swatch swatch-obs"></span>
-                        <span>Combustion Observations & Vents</span>
+                        <span>Combustion Observations &amp; Vents (Synthetic Mode Only)</span>
                     </label>
                     <label class="layer-toggle-label">
                         <input type="checkbox" id="layer-surveys" ${this.state.showSurveys ? 'checked' : ''} />
                         <span class="swatch swatch-survey"></span>
-                        <span>Negative Thermal Surveys (Bounded)</span>
+                        <span>Negative Thermal Surveys (Bounded, Synthetic Mode)</span>
                     </label>
                     <label class="layer-toggle-label">
                         <input type="checkbox" id="layer-geology" ${this.state.showGeology ? 'checked' : ''} />
                         <span class="swatch swatch-clinker"></span>
-                        <span>Clinker & Coal Stratigraphy (USGS/MBMG)</span>
+                        <span>Schematic Clinker &amp; Coal Context (Synthetic Fixture Only)</span>
                     </label>
                 </div>
 
                 <div class="legend-section">
-                    <span class="legend-subhead">EVIDENCE STATUS KEY</span>
+                    <span class="legend-subhead">EVIDENCE STATUS KEY (COLOR + STROKE/SIZE)</span>
                     <div class="status-key-grid">
-                        <div class="status-key-item"><span class="dot dot-field"></span> Field Confirmed (Thermocouple/Gas)</div>
-                        <div class="status-key-item"><span class="dot dot-sensor"></span> Sensor Detection (Aerial FLIR/IR)</div>
-                        <div class="status-key-item"><span class="dot dot-unverified"></span> Unverified Narrative / Historical</div>
-                        <div class="status-key-item"><span class="dot dot-reignited"></span> Re-ignited Vegetation (Hypothesis)</div>
+                        <div class="status-key-item"><span class="dot dot-field" style="width:10px;height:10px;border:2px solid #065f46;"></span> Field Confirmed (Large r=8, Thick White Ring)</div>
+                        <div class="status-key-item"><span class="dot dot-sensor" style="width:9px;height:9px;border:2px solid #1e293b;"></span> Sensor Detection (Med r=7, Dark Ring)</div>
+                        <div class="status-key-item"><span class="dot dot-unverified" style="width:7px;height:7px;border:1px dashed #5b21b6;"></span> Unverified Narrative / Historical (Small r=5.5)</div>
+                        <div class="status-key-item"><span class="dot dot-extinguished" style="width:7px;height:7px;border:1.5px solid #475569;"></span> Extinguished / Inactive Vent (Small r=5)</div>
+                        <div class="status-key-item"><span class="dot dot-reignited" style="width:11px;height:11px;border:2px solid #fef08a;"></span> Re-ignited Vegetation Hypothesis (XL r=9)</div>
                     </div>
                     <div class="grouping-caveat-box">
                         <span class="icon">ℹ</span>
-                        <span>Dashed orange boundaries indicate <strong>unresolved multi-vent bodies</strong> sharing potential continuous subsurface combustion.</span>
+                        <span><strong>Static Final Footprint:</strong> The red Remington perimeter is a single retrospective polygon (mapped 2025-01-15), not daily fire spread. Dashed orange boundaries indicate <strong>unresolved multi-vent bodies</strong>.</span>
                     </div>
                 </div>
             </div>
@@ -136,7 +141,7 @@ export class MapLegend {
 
         basemapSelect?.addEventListener('change', () => {
             if (this.onBasemapChangeCallback) {
-                this.onBasemapChangeCallback(basemapSelect.value as any);
+                this.onBasemapChangeCallback(basemapSelect.value as 'positron' | 'liberty' | 'contour');
             }
         });
 

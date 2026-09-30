@@ -1,38 +1,36 @@
 /**
- * PRB Coal-Fire Evidence Explorer - Main Entry Point
- * 
- * Study Area: Remington Fire (Powder River Basin, MT/WY)
- * Invariants:
- * - Separated from historical simulation engine
- * - Restrained 2D North-Up default with optional 35° oblique pitch
- * - Real Data Default with explicit Data Gaps advisory
- * - Synthetic Fixtures quarantined behind toggle
- * - Style-event-driven layer mounting
+ * Main Application Entry Point for the Powder River Basin (PRB) Coal-Fire Evidence Explorer
+ * Study Area: 2024 Remington Wildfire (MT/WY) & Surrounding Fort Union Stratigraphy
  */
 
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { loadPRBEvidenceData } from './data/load';
-import { filterEvidence } from './data/select';
-import type { PRBDataSet, EvidenceFilterState } from './data/types';
-import { BASEMAP_STYLES, createContourStyle, initDemSource } from './map/styles';
-import { ResearchLayerManager } from './map/layers';
-import { EvidencePanel } from './ui/EvidencePanel';
-import { TimelineControl } from './ui/TimelineControl';
-import { MapLegend, type LayerVisibilityState } from './ui/Legend';
-import { ExportDialog } from './ui/ExportDialog';
 
-// Initialize DEM Source for optional contour/hillshade theme
-const demSource = initDemSource(maplibregl);
+import { loadPRBEvidenceData } from './data/load.ts';
+import { filterEvidence } from './data/select.ts';
+import type { FilterState, PRBEvidenceDataset } from './data/types.ts';
 
-// Study Area Bounds for Remington Fire
-const REMINGTON_CENTER: [number, number] = [-106.263, 45.174];
-const DEFAULT_ZOOM = 9.5;
+import { BASEMAP_STYLES, initDemSource, createContourStyle } from './map/styles.ts';
+import { initEvidenceLayers, updateEvidenceLayers, setLayerGroupVisibility } from './map/layers.ts';
 
-async function bootstrap() {
-    console.log('[PRB Explorer] Initializing PRB Coal-Fire Evidence Explorer...');
+import { TimelineControl } from './ui/TimelineControl.ts';
+import { EvidencePanel, escapeHtml } from './ui/EvidencePanel.ts';
+import { MapLegend } from './ui/Legend.ts';
+import { exportFilteredGeoJson, exportFilteredCsv, openPrintableEvidenceBrief } from './ui/ExportDialog.ts';
 
-    // 1. Initialize MapLibre in 2D North-Up mode
+// Remington Wildfire & Southern Montana / Northern Wyoming PRB Center
+const REMINGTON_CENTER: [number, number] = [-106.08, 45.01];
+const DEFAULT_ZOOM = 9.2;
+
+const REAL_MODE_BADGE_TEXT =
+    '✓ REAL MODE: 1 WFIGS PERIMETER ONLY (NO VERIFIED COAL-FIRE OR LOCAL GEOLOGY INVENTORY)';
+
+async function bootstrapPRBExplorer() {
+    const baseUrl = import.meta.env.BASE_URL || '/';
+
+    // 1. Initialize MapLibre GL JS Map
+    const demSource = initDemSource(maplibregl);
+
     const map = new maplibregl.Map({
         container: 'prb-map-container',
         style: BASEMAP_STYLES.positron,
@@ -40,216 +38,181 @@ async function bootstrap() {
         zoom: DEFAULT_ZOOM,
         pitch: 0,
         bearing: 0,
-        attributionControl: false, // Custom attribution control added below
-        preserveDrawingBuffer: true
+        maxPitch: 60,
+        // @ts-ignore - MapLibre preserveDrawingBuffer for static PNG brief capture
+        canvasContextAttributes: { preserveDrawingBuffer: true }
     });
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-right');
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 140, unit: 'metric' }), 'bottom-left');
 
-    const layerManager = new ResearchLayerManager(map);
-
-    // 2. Setup Layer re-attachment strictly on 'style.load'
-    map.on('style.load', () => {
-        console.log('[PRB Explorer] Basemap style loaded. Re-mounting research overlays...');
-        layerManager.onStyleReload();
-    });
-
-    // 3. Load Datasets and Manifest
-    let dataset: PRBDataSet;
+    // 2. Load & Verify PRB Evidence Datasets
+    let dataset: PRBEvidenceDataset;
     try {
-        dataset = await loadPRBEvidenceData();
-        console.log('[PRB Explorer] Data loaded successfully:', dataset.manifest.studyArea);
+        dataset = await loadPRBEvidenceData(baseUrl);
     } catch (err) {
-        console.error('[PRB Explorer] Failed to load research data:', err);
-        const errDiv = document.createElement('div');
-        errDiv.className = 'callout-box warning';
-        errDiv.style.margin = '20px';
-        errDiv.textContent = `Error loading PRB datasets: ${String(err)}`;
-        document.body.prepend(errDiv);
+        console.error('Failed to initialize PRB Evidence Explorer:', err);
+        const errBanner = document.getElementById('evidence-panel-container');
+        if (errBanner) {
+            const msg = err instanceof Error ? err.message : String(err);
+            errBanner.innerHTML = `<div class="callout-box warning" style="margin:20px;"><strong>Dataset Initialization Error:</strong> ${escapeHtml(msg)}</div>`;
+        }
         return;
     }
 
-    // 4. State Management
-    const filterState: EvidenceFilterState = {
+    // 3. Initial Filter State (Quarantine Synthetic Data by Default)
+    const filterState: FilterState = {
         startDate: '2024-08-01',
         endDate: '2024-10-01',
-        includeSynthetic: false, // REAL DATA DEFAULT
-        statusFilter: new Set([
-            'field_confirmed', 
-            'sensor_detection', 
-            'unverified_report', 
-            'reignited_vegetation', 
-            'extinguished'
-        ]),
-        methodFilter: new Set([
-            'aerial_survey', 
-            'satellite_ir', 
-            'field_visit', 
-            'incident_report', 
-            'historical_literature'
-        ]),
-        showGeology: true,
-        showPerimeters: true,
-        showSurveys: true,
-        showObservations: true
+        includeSynthetic: false,
+        allowedStatuses: [
+            'field_confirmed',
+            'sensor_detection',
+            'unverified_report',
+            'extinguished',
+            'reignited_vegetation'
+        ]
     };
 
-    // 5. Initialize UI Components
-    const evidencePanel = new EvidencePanel('evidence-panel-container');
-    const timelineControl = new TimelineControl('timeline-control-container');
-    const mapLegend = new MapLegend('legend-card-container');
+    let currentFilteredData = filterEvidence(dataset, filterState);
 
-    // Sync function
-    const updateApplicationState = () => {
-        const filtered = filterEvidence(dataset, filterState);
-        layerManager.syncLayers(filtered, (selected) => {
-            evidencePanel.showFeature(selected);
+    // 4. Initialize UI Components
+    const evidencePanel = new EvidencePanel('evidence-panel-container', dataset);
+    const timeline = new TimelineControl('timeline-control-container');
+    const legend = new MapLegend('legend-card-container');
+
+    evidencePanel.updateFilteredData(currentFilteredData);
+
+    const modeBadge = document.getElementById('active-mode-notice');
+    if (modeBadge) {
+        modeBadge.textContent = REAL_MODE_BADGE_TEXT;
+        modeBadge.className = 'status-badge status-field_confirmed';
+    }
+
+    // Pan/zoom to feature when selected from the accessible records table
+    evidencePanel.setOnFeatureSelect((_id, coords) => {
+        if (coords) {
+            map.flyTo({ center: coords, zoom: 12.5, duration: 900 });
+        }
+    });
+
+    // 5. Render Map Layers once style is loaded (handling case where map loaded before fetch completed)
+    const applyLegendVisibility = () => {
+        const layerState = legend.getLayerState();
+        setLayerGroupVisibility(map, 'geology', layerState.showGeology);
+        setLayerGroupVisibility(map, 'perimeters', layerState.showPerimeters);
+        setLayerGroupVisibility(map, 'surveys', layerState.showSurveys);
+        setLayerGroupVisibility(map, 'observations', layerState.showObservations);
+    };
+
+    const mountEvidenceLayers = () => {
+        initEvidenceLayers(map, currentFilteredData, (type, props) => {
+            evidencePanel.selectFeature(type, props);
         });
-
-        // Update active panel tab content
-        const tab = evidencePanel.getCurrentTab();
-        if (tab === 'records') {
-            evidencePanel.renderRecordsTable(filtered.filteredObservations, filtered.filteredPerimeters);
-        } else if (tab === 'gaps') {
-            evidencePanel.renderDataGaps(dataset.manifest);
-        } else if (tab === 'manifest') {
-            evidencePanel.renderManifest(dataset.manifest);
-        }
-
-        // Update real vs synthetic indicator
-        const synthNotice = document.getElementById('active-mode-notice');
-        if (synthNotice) {
-            if (filterState.includeSynthetic) {
-                synthNotice.style.display = 'inline-flex';
-                synthNotice.className = 'status-badge status-sensor_detection';
-                synthNotice.textContent = '⚠️ SYNTHETIC VALIDATION FIXTURES ACTIVE (TESTING ONLY)';
-            } else {
-                synthNotice.style.display = 'inline-flex';
-                synthNotice.className = 'status-badge status-field_confirmed';
-                synthNotice.textContent = '✓ VERIFIED REAL DATASETS ONLY';
-            }
-        }
+        applyLegendVisibility();
     };
 
-    // 6. Connect EvidencePanel events
-    evidencePanel.setOnRecordSelect((id: string) => {
-        // Select from table
-        const obs = dataset.observations.find(o => o.id === id);
-        if (obs) {
-            evidencePanel.showFeature({ type: 'observation', data: obs });
-            if (obs.geometry.type === 'Point') {
-                map.flyTo({ center: (obs.geometry as GeoJSON.Point).coordinates as [number, number], zoom: 12 });
+    if (map.loaded() || map.isStyleLoaded()) {
+        mountEvidenceLayers();
+    } else {
+        map.on('load', mountEvidenceLayers);
+    }
+
+    // 6. Wire Timeline & Synthetic Quarantine Changes
+    timeline.setOnChange(evt => {
+        filterState.startDate = evt.startDate;
+        filterState.endDate = evt.endDate;
+        filterState.includeSynthetic = evt.includeSynthetic;
+
+        currentFilteredData = filterEvidence(dataset, filterState);
+        updateEvidenceLayers(map, currentFilteredData);
+        evidencePanel.updateFilteredData(currentFilteredData);
+
+        if (modeBadge) {
+            if (evt.includeSynthetic) {
+                modeBadge.textContent = '⚠ SYNTHETIC VALIDATION FIXTURES & SCHEMATIC GEOLOGY ACTIVE (NOT REAL OBSERVATIONS)';
+                modeBadge.className = 'status-badge status-sensor_detection';
+            } else {
+                modeBadge.textContent = REAL_MODE_BADGE_TEXT;
+                modeBadge.className = 'status-badge status-field_confirmed';
             }
-            return;
-        }
-        const perim = dataset.firePerimeters.find(p => p.id === id);
-        if (perim) {
-            evidencePanel.showFeature({ type: 'perimeter', data: perim });
-            map.flyTo({ center: REMINGTON_CENTER, zoom: 9.5 });
         }
     });
 
-    const panelEl = document.getElementById('evidence-panel-container');
-    panelEl?.addEventListener('tabchange', () => {
-        updateApplicationState();
+    // 7. Wire Legend Layer Toggles, Basemap Switcher & Camera Perspective
+    legend.setOnLayerToggle(layerState => {
+        setLayerGroupVisibility(map, 'geology', layerState.showGeology);
+        setLayerGroupVisibility(map, 'perimeters', layerState.showPerimeters);
+        setLayerGroupVisibility(map, 'surveys', layerState.showSurveys);
+        setLayerGroupVisibility(map, 'observations', layerState.showObservations);
     });
 
-    // 7. Connect TimelineControl events
-    timelineControl.setOnChange((e) => {
-        filterState.startDate = e.startDate;
-        filterState.endDate = e.endDate;
-        filterState.includeSynthetic = e.includeSynthetic;
-        updateApplicationState();
-    });
-
-    // 8. Connect MapLegend events
-    mapLegend.setOnLayerToggle((layers: LayerVisibilityState) => {
-        filterState.showGeology = layers.showGeology;
-        filterState.showPerimeters = layers.showPerimeters;
-        filterState.showSurveys = layers.showSurveys;
-        filterState.showObservations = layers.showObservations;
-        updateApplicationState();
-    });
-
-    mapLegend.setOnBasemapChange((theme) => {
-        if (theme === 'contour') {
-            const style = createContourStyle(demSource);
-            map.setStyle(style);
-        } else if (theme === 'liberty') {
-            map.setStyle(BASEMAP_STYLES.liberty);
-        } else {
-            map.setStyle(BASEMAP_STYLES.positron);
-        }
-    });
-
-    mapLegend.setOnPerspectiveToggle((isOblique: boolean) => {
+    legend.setOnPerspectiveToggle(isOblique => {
         map.easeTo({
             pitch: isOblique ? 35 : 0,
-            bearing: isOblique ? -15 : 0,
-            duration: 800
+            bearing: isOblique ? -12 : 0,
+            duration: 700
         });
     });
 
-    // 9. Wire Header Actions & Persistent Theme Management
+    let styleSwitchSeq = 0;
+    legend.setOnBasemapChange(theme => {
+        const currentSeq = ++styleSwitchSeq;
+        let mounted = false;
+
+        const onStyleReady = () => {
+            if (mounted || currentSeq !== styleSwitchSeq) return;
+            if (!map.isStyleLoaded()) return;
+            mounted = true;
+            map.off('style.load', onStyleReady);
+            map.off('styledata', onStyleReady);
+            mountEvidenceLayers();
+        };
+
+        map.on('style.load', onStyleReady);
+        map.on('styledata', onStyleReady);
+
+        if (theme === 'contour') {
+            map.setStyle(createContourStyle(demSource));
+        } else {
+            map.setStyle(BASEMAP_STYLES[theme]);
+        }
+    });
+
+    // 8. Wire Header Export & Theme Controls
+    const btnGeoJson = document.getElementById('btn-export-geojson');
+    const btnCsv = document.getElementById('btn-export-csv');
+    const btnBrief = document.getElementById('btn-export-brief');
     const btnTheme = document.getElementById('btn-toggle-theme');
-    const savedTheme = localStorage.getItem('prb-theme');
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    let isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
 
-    const applyTheme = (dark: boolean) => {
-        isDark = dark;
-        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-        if (btnTheme) btnTheme.textContent = isDark ? '☀️ LIGHT THEME' : '🌙 DARK THEME';
-        localStorage.setItem('prb-theme', isDark ? 'dark' : 'light');
-    };
+    btnGeoJson?.addEventListener('click', () => {
+        exportFilteredGeoJson(
+            currentFilteredData,
+            dataset.manifest,
+            filterState,
+            dataset.syntheticSources
+        );
+    });
 
-    applyTheme(isDark);
+    btnCsv?.addEventListener('click', () => {
+        exportFilteredCsv(
+            currentFilteredData,
+            dataset.manifest,
+            filterState,
+            dataset.syntheticSources
+        );
+    });
+
+    btnBrief?.addEventListener('click', () => {
+        openPrintableEvidenceBrief(currentFilteredData, dataset.manifest, filterState, map.getCanvas());
+    });
 
     btnTheme?.addEventListener('click', () => {
-        applyTheme(!isDark);
-    });
-
-    // Global Escape shortcut to reset active inspection
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            evidencePanel.showFeature(null);
-        }
-    });
-
-    const btnExportGeo = document.getElementById('btn-export-geojson');
-    btnExportGeo?.addEventListener('click', () => {
-        const filtered = filterEvidence(dataset, filterState);
-        ExportDialog.exportGeoJson(filtered, dataset.manifest);
-    });
-
-    const btnExportCsv = document.getElementById('btn-export-csv');
-    btnExportCsv?.addEventListener('click', () => {
-        const filtered = filterEvidence(dataset, filterState);
-        ExportDialog.exportCsv(filtered);
-    });
-
-    const btnExportBrief = document.getElementById('btn-export-brief');
-    btnExportBrief?.addEventListener('click', () => {
-        const filtered = filterEvidence(dataset, filterState);
-        const canvas = map.getCanvas();
-        ExportDialog.exportStaticBrief(filtered, dataset.manifest, canvas);
-    });
-
-    // Initial map load trigger
-    map.on('load', () => {
-        updateApplicationState();
-        // Show initial perimeter feature in evidence inspector
-        if (dataset.firePerimeters.length > 0) {
-            evidencePanel.showFeature({ type: 'perimeter', data: dataset.firePerimeters[0] });
-        }
+        const html = document.documentElement;
+        const isDark = html.getAttribute('data-theme') === 'dark';
+        html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        btnTheme.textContent = isDark ? '🌙 DARK THEME' : '☀️ LIGHT THEME';
     });
 }
 
-// Start on DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootstrap);
-} else {
-    bootstrap();
-}
+bootstrapPRBExplorer();

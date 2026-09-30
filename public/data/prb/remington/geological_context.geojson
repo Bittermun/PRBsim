@@ -1,51 +1,49 @@
 {
   "type": "FeatureCollection",
   "metadata": {
-    "title": "Powder River Basin Geological Context: Remington Study Area",
-    "description": "Stratigraphic and historical combustion framework for interpreting coal seam fire evidence.",
-    "coordinateSystem": "EPSG:4326 (WGS84)",
-    "sources": [
-      "USGS Professional Paper 1809",
-      "USGS Professional Paper 1625-A (NCRA)",
-      "Montana Bureau of Mines and Geology (MBMG) Coal Program"
-    ]
+    "crs": "EPSG:4326",
+    "title": "PRB Schematic Geological Context Fixtures (Non-Empirical)",
+    "provenance": "PRBsim schematic UI fixture; geometry is hand-authored in prepare_data.py and is NOT extracted from USGS PP 1625-A or MBMG vector files.",
+    "isSynthetic": true
   },
   "features": [
     {
       "type": "Feature",
-      "id": "geo-strata-tongue-river",
+      "id": "geo-fort-union-formation-bound",
       "properties": {
-        "name": "Tongue River Member (Fort Union Formation)",
-        "category": "coal_bearing_strata",
-        "age": "Paleocene",
-        "description": "Primary thick coal-bearing stratigraphic interval of northern Powder River Basin. Contains Wyodak-Anderson, Canyon, Dietz, and Roland coal beds.",
-        "combustionSusceptibility": "High at shallow weathered outcrop and subcrop zones; susceptible to spontaneous combustion upon exposure to atmospheric oxygen and thermal trigger.",
-        "provenance": "USGS Professional Paper 1809 / MBMG Report of Investigation 25",
-        "source": "USGS/MBMG Regional Stratigraphic Framework"
+        "id": "geo-fort-union-formation-bound",
+        "unitName": "Schematic Paleocene Fort Union Formation (Tongue River Member) Envelope",
+        "unitType": "coal_outcrop",
+        "formation": "Fort Union Formation (Tongue River Member)",
+        "coalBed": "Anderson-Dietz, Canyon, and Roland Coal Zone (Schematic)",
+        "sourceId": "usgs-mbmg-prb-geology",
+        "scale": "Schematic bounding box (not a surveyed map scale)",
+        "isSynthetic": true,
+        "notes": "SCHEMATIC FIXTURE ONLY (NOT AGENCY VECTOR DATA): Hand-constructed regional bounding envelope illustrating where sub-bituminous coal beds crop out along the Tongue River and Powder River drainages. Do not use for spatial measurement or geological inference."
       },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
             [
-              -106.55,
-              44.85
+              -106.75,
+              44.82
             ],
             [
-              -106.0,
-              44.85
+              -105.65,
+              44.82
             ],
             [
-              -106.0,
-              45.5
+              -105.65,
+              45.38
             ],
             [
-              -106.55,
-              45.5
+              -106.75,
+              45.38
             ],
             [
-              -106.55,
-              44.85
+              -106.75,
+              44.82
             ]
           ]
         ]
@@ -53,121 +51,83 @@
     },
     {
       "type": "Feature",
-      "id": "geo-clinker-belt-tongue-divide",
+      "id": "geo-clinker-badger-peak-bench",
       "properties": {
-        "name": "Tongue River - Powder River Divide Clinker Belt",
-        "category": "historic_clinker_outcrop",
-        "age": "Pleistocene to Holocene",
-        "description": "Resistant red/orange baked shale and paralava formed by prehistoric and historical in-situ burning of the Anderson and Wyodak coal beds.",
-        "significance": "Establishes long-term geologic precedent of self-sustaining coal seam combustion in this specific terrain, independent of recent fire events.",
-        "provenance": "USGS NCRA Professional Paper 1625-A Digital GIS Layers (prbclkg)",
-        "source": "USGS National Coal Resource Assessment"
-      },
-      "geometry": {
-        "type": "MultiPolygon",
-        "coordinates": [
-          [
-            [
-              [
-                -106.35,
-                45.05
-              ],
-              [
-                -106.28,
-                45.08
-              ],
-              [
-                -106.25,
-                45.15
-              ],
-              [
-                -106.3,
-                45.22
-              ],
-              [
-                -106.38,
-                45.18
-              ],
-              [
-                -106.4,
-                45.1
-              ],
-              [
-                -106.35,
-                45.05
-              ]
-            ]
-          ],
-          [
-            [
-              [
-                -106.18,
-                45.25
-              ],
-              [
-                -106.12,
-                45.3
-              ],
-              [
-                -106.1,
-                45.38
-              ],
-              [
-                -106.16,
-                45.42
-              ],
-              [
-                -106.22,
-                45.36
-              ],
-              [
-                -106.2,
-                45.28
-              ],
-              [
-                -106.18,
-                45.25
-              ]
-            ]
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "id": "geo-formation-wasatch-subcrop",
-      "properties": {
-        "name": "Wasatch Formation (Overburden / Basin Center)",
-        "category": "sedimentary_overburden",
-        "age": "Eocene",
-        "description": "Interbedded sandstone, siltstone, and mudstone conformably overlying Fort Union coals in elevated tablelands.",
-        "combustionSusceptibility": "Low (acts as thermal insulating cap and overburden; combustion occurs where eroded by dendritic drainage).",
-        "provenance": "MBMG Geologic Map of Montana (1:500,000)",
-        "source": "MBMG GIS Modernization Program"
+        "id": "geo-clinker-badger-peak-bench",
+        "unitName": "Schematic Badger Peak / Tongue River Escarpment Clinker Zone",
+        "unitType": "clinker_deposit",
+        "formation": "Fort Union Formation (Thermally Metamorphosed Clinker - Schematic)",
+        "coalBed": "Anderson-Dietz Clinker Zone (Schematic)",
+        "sourceId": "usgs-mbmg-prb-geology",
+        "scale": "Schematic polygon (not a surveyed map scale)",
+        "isSynthetic": true,
+        "notes": "SCHEMATIC FIXTURE ONLY (NOT AGENCY VECTOR DATA): Illustrative polygon for prehistoric/historic coal-burn clinker benches discussed in Heffern & Coates (2004). Does not represent digitized MBMG or USGS outcrop boundaries."
       },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
             [
-              -106.45,
-              44.88
+              -106.48,
+              44.96
             ],
             [
-              -106.32,
-              44.92
+              -106.18,
+              44.94
             ],
             [
-              -106.35,
-              45.02
+              -106.1,
+              45.14
+            ],
+            [
+              -106.42,
+              45.18
             ],
             [
               -106.48,
-              44.98
+              44.96
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "geo-clinker-rosebud-creek-bench",
+      "properties": {
+        "id": "geo-clinker-rosebud-creek-bench",
+        "unitName": "Schematic Northern Remington / Rosebud-Powder Divide Clinker Escarpments",
+        "unitType": "clinker_deposit",
+        "formation": "Fort Union Formation (Clinker & Baked Shale - Schematic)",
+        "coalBed": "Canyon & Roland Coal Zone (Schematic)",
+        "sourceId": "usgs-mbmg-prb-geology",
+        "scale": "Schematic polygon (not a surveyed map scale)",
+        "isSynthetic": true,
+        "notes": "SCHEMATIC FIXTURE ONLY (NOT AGENCY VECTOR DATA): Illustrative polygon for fractured clinker caprock. Hidden in default verified mode to prevent confusion with real geological mapping."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -106.12,
+              45.05
             ],
             [
-              -106.45,
-              44.88
+              -105.82,
+              45.03
+            ],
+            [
+              -105.78,
+              45.26
+            ],
+            [
+              -106.08,
+              45.28
+            ],
+            [
+              -106.12,
+              45.05
             ]
           ]
         ]

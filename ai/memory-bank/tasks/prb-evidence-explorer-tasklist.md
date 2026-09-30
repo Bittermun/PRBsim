@@ -25,11 +25,11 @@
 | **Scientific Invariant 3** | *Spatial Overlap $\neq$ Causality*: Co-location of wildfire with coal stratigraphy does not demonstrate ignition direction, fracture propagation, or connectivity. | **VERIFIED** | Disclaimers on map and inspector; no artificial causal vectors or inferred underground channels. |
 | **Scientific Invariant 4** | *Survey Absence $\neq$ Absence of Fire*: Unsurveyed areas must be labeled unknown, not fire-free. Negative surveys require explicit footprint and detection limits. | **VERIFIED** | Negative surveys recorded with instrument limits in `Survey`; unsurveyed area rendering avoids false-negative assumption. |
 | **Scientific Invariant 5** | *Honest Data Gaps & No Fabricated Data*: If no public active vent inventory exists, show honest unavailable-data state. Synthetic fixtures quarantined behind toggle. | **VERIFIED** | Real dataset displays verified perimeter and geology; synthetic fixtures isolated in `synthetic_fixtures.json` behind explicit UI switch (`isSynthetic: true`). |
-| **Data Feasibility** | Audit MBMG, MTBS, Custer County DES, NIFC WFIGS. Produce manifest with SHA256 checksums, CRS, transformations. | **VERIFIED** | Manifest at `public/data/prb/remington/manifest.json` with SHA256 hashes (`af295a61...`, `e53cf41b...`); raw inputs in `raw/`; preparation script in `scripts/prb/prepare_data.py`. |
+| **Data Feasibility** | Audit MBMG, MTBS, Custer County DES, NIFC WFIGS. Produce manifest with SHA256 checksums, CRS, transformations. | **VERIFIED** | Manifest at `public/data/prb/remington/manifest.json` with SHA256 hashes (`1c0f9dd9...`, `e03ccd44...`, `afe3f3a3...`); raw inputs in `raw/`; preparation script in `scripts/prb/prepare_data.py`. |
 | **Data Request Draft** | Prepare inquiry for state/county agencies, labeled DRAFT NOT SENT. | **VERIFIED** | `docs/prb/data_request_draft.md` formatted and explicitly watermarked `DRAFT - NOT SENT`. |
-| **Architecture & Separation** | Separate `SourceReference`, `Site`, `Observation`, `Survey`, `FirePerimeter`, `GeologicalFeature`. Pure selection function safe from timezone shifts. | **VERIFIED** | Domain types in `src/prb/data/types.ts`; pure deterministic filtering in `src/prb/data/select.ts`; tests in `tests/prb/evidence.test.js`. |
+| **Architecture & Separation** | Separate `DatasetSource`, `CoalFireSite`, `CoalFireObservation`, `SurveyCoverageRecord`, `WildfirePerimeterRecord`, `GeologicalContextFeature`. Pure selection function safe from timezone shifts. | **VERIFIED** | Domain types in `src/prb/data/types.ts`; pure deterministic filtering in `src/prb/data/select.ts`; tests in `tests/prb/evidence.test.js`. |
 | **Visual Cartography** | Restrained Positron default; 2D north-up default + 35° oblique toggle; no CRT overlays, ripples, stocks, or danger effects; reduced motion honored. | **VERIFIED** | `src/prb/map/styles.ts`, `src/prb/style.css`; CRT, ripples, tickers completely eliminated. |
-| **Style Lifecycle Guard** | Idempotent research overlay mounting strictly on `style.load` with layer-existence checks (`map.getSource()`). | **VERIFIED** | Implemented in `src/prb/map/layers.ts` `onStyleReload()` with `hasSource`/`hasLayer` guards. |
+| **Style Lifecycle Guard** | Idempotent research overlay mounting strictly on `style.load` with layer-existence checks (`map.getSource()`). | **VERIFIED** | Implemented in `src/prb/main.ts` and `src/prb/map/layers.ts` with idempotent source/layer teardown and legend visibility preservation. |
 | **Great Depression Purge** | Remove all macroeconomic simulations, stock tickers, trade bureau, and legacy demo entries. | **VERIFIED** | `index.html` is the primary PRB Explorer root; `src/main.ts` delegates to `prb/main`; all old simulation directories deleted. |
 | **Outputs & Exports** | GeoJSON export, CSV export, printable Evidence Brief summary with caveats and SHA256 checksums. | **VERIFIED** | `ExportDialog.ts` generates validated GeoJSON, CSV, and popup printable brief window. |
 
@@ -49,23 +49,23 @@
 ### [x] Task 2: Pure Evidence Domain Data Model & Ingestion
 **Description**: Define immutable research data types and ingestion validator with integrity checks.
 **Acceptance Criteria**:
-- Distinct entities for `SourceReference`, `Site`, `Observation`, `Survey`, `FirePerimeter`, `GeologicalFeature`, and `DatasetManifest`.
+- Distinct entities for `DatasetSource`, `CoalFireSite`, `CoalFireObservation`, `SurveyCoverageRecord`, `WildfirePerimeterRecord`, `GeologicalContextFeature`, and `EvidenceManifest`.
 - Geometry validation rejects malformed coordinates.
 - Identifier validation catches duplicate IDs.
 - Temporal validation rejects impossible date sequences (`startDate > endDate`).
-- Separation of `reportedCondition`, `verificationStatus`, and `analystNotes`.
+- Separation of `status`, `evidenceMethods`, and `notes`.
 
 ### [x] Task 3: Deterministic Timezone-Neutral Selection Engine
 **Description**: Pure filtering logic for temporal windows and status criteria without browser timezone drift.
 **Acceptance Criteria**:
-- ISO calendar strings (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`) normalized without `new Date()` timezone offset shifts.
+- ISO calendar strings (`YYYY-MM-DD`) validated without timezone offset shifts.
 - Forward and backward stepping produces identical record sets.
 - Last-observed status clearly flagged without assuming ongoing burning.
 
 ### [x] Task 4: Cartographic Engine & Idempotent Layer Manager
 **Description**: MapLibre GL JS integration with restrained OpenFreeMap Positron default and MapLibre-contour DEM.
 **Acceptance Criteria**:
-- Idempotent overlay re-mounting strictly on `style.load` without tile-stream re-render loops.
+- Idempotent overlay re-mounting on `style.load` without tile-stream re-render loops.
 - Topographic DEM contours and hillshading available as optional basemap theme.
 - 2D Planimetric default with smooth 35° oblique perspective toggle.
 - Category-specific symbology for thermal observations, vents, negative surveys, and fire scar polygons.
@@ -89,7 +89,7 @@
 ### [x] Task 7: Automated Test Suite & Production Build Verification
 **Description**: Rigorous unit tests and production build verification.
 **Acceptance Criteria**:
-- `npm test` runs 6 unit test suites covering date normalization, duplicate detection, geometry validation, date ordering, and grouping preservation (100% pass).
+- `npm test` runs production unit test suites covering SHA256 verification, LF line-ending hygiene, temporal model, schema/enum/geometry validation, multi-vent grouping preservation, layer GeoJSON builders, and export/escaping helpers (100% pass).
 - `npm run build` compiles `dist/` with 0 errors and 0 type warnings.
 - Browser subagent verification confirms root `index.html` loads cleanly without console errors or legacy artifacts.
 

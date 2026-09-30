@@ -1,271 +1,755 @@
 /**
- * Data & Static Map Export Module for PRB Evidence Explorer
- * 
- * - Generates standalone GeoJSON export of active research features
- * - Generates CSV export for tabular evidence logs
- * - Generates an auditable, print-ready Static Map & Evidence Brief HTML document
- *   complete with legend, active filter state, full attribution, and scientific disclaimers.
+ * Export & Reproducible Reporting Utilities for PRB Evidence Explorer
+ *
+ * Supports:
+ * 1. Filtered GeoJSON export with embedded provenance metadata, temporal role, and synthetic quarantine flags
+ * 2. Properly escaped RFC 4180 CSV export covering perimeters, observations, surveys, and active geology
+ * 3. Printable Scientific Evidence Brief (HTML report with map canvas snapshot, reconstructed legend,
+ *    cartographic attribution, Phase 5 Remington Case Study Evidence Matrix, and SHA256 manifest)
  */
 
-import type { DatasetManifest, FirePerimeter, Observation, Survey, GeologicalFeature } from '../data/types';
-import type { FilteredEvidenceResult } from '../data/select';
-import { escapeHtml } from './EvidencePanel';
+import type {
+    EvidenceManifest,
+    DatasetSource,
+    CoalFireSite
+} from '../data/types.ts';
+import type { FilteredEvidenceResult } from '../data/select.ts';
+import { escapeHtml, formatFireCauseRecord, sanitizeExternalUrl } from './EvidencePanel.ts';
 
-function escapeCsvCell(val: any): string {
-    if (val === null || val === undefined) return '""';
-    const str = String(val);
-    return `"${str.replace(/"/g, '""')}"`;
+export interface ExportWindowMeta {
+    startDate: string;
+    endDate: string;
+    includeSynthetic: boolean;
 }
 
-export class ExportDialog {
-    public static exportGeoJson(result: FilteredEvidenceResult, manifest: DatasetManifest): void {
-        const exportCollection = {
-            type: 'FeatureCollection',
-            metadata: {
-                title: 'Powder River Basin Coal-Fire Evidence Explorer - Filtered Extract',
-                studyArea: manifest.studyArea,
-                exportDate: new Date().toISOString(),
-                filterWindow: result.activeDateWindow,
-                isSyntheticIncluded: result.isSyntheticActive,
-                disclaimer: 'Absence of observations does not establish absence of fire. Bounded by published survey availability.'
-            },
-            features: [
-                ...result.filteredPerimeters.map((p: FirePerimeter) => ({
-                    type: 'Feature',
-                    id: p.id,
-                    properties: { ...p, geometry: undefined },
-                    geometry: p.geometry
-                })),
-                ...result.filteredObservations.map((o: Observation) => ({
-                    type: 'Feature',
-                    id: o.id,
-                    properties: { ...o, geometry: undefined },
-                    geometry: o.geometry
-                })),
-                ...result.filteredSurveys.map((s: Survey) => ({
-                    type: 'Feature',
-                    id: s.id,
-                    properties: { ...s, footprintGeometry: undefined },
-                    geometry: s.footprintGeometry
-                })),
-                ...result.geologicalFeatures.map((g: GeologicalFeature) => ({
-                    type: 'Feature',
-                    id: g.id,
-                    properties: { ...g, geometry: undefined },
-                    geometry: g.geometry
-                }))
-            ]
-        };
-
-        const jsonStr = JSON.stringify(exportCollection, null, 2);
-        ExportDialog.triggerDownload(
-            jsonStr, 
-            `prb_evidence_extract_${result.activeDateWindow.startDate}_to_${result.activeDateWindow.endDate}.geojson`, 
-            'application/geo+json'
-        );
+/**
+ * Escapes a single CSV cell value according to RFC 4180 and neutralizes formula injection.
+ */
+export function escapeCsvCell(val: unknown): string {
+    if (val === null || val === undefined) return '';
+    let str = String(val);
+    if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`;
     }
-
-    public static exportCsv(result: FilteredEvidenceResult): void {
-        const headers = [
-            'ID',
-            'Type',
-            'Date',
-            'Precision',
-            'Method',
-            'Status',
-            'ReportedCause',
-            'VerifiedEvidence',
-            'AnalystInterpretation',
-            'IsSynthetic'
-        ];
-
-        const rows: string[][] = [];
-
-        // Perimeters
-        result.filteredPerimeters.forEach((p: FirePerimeter) => {
-            rows.push([
-                escapeCsvCell(p.id),
-                escapeCsvCell('Wildfire Perimeter'),
-                escapeCsvCell(p.discoveryDate),
-                escapeCsvCell('day'),
-                escapeCsvCell(p.mapMethod),
-                escapeCsvCell('NIFC Approved'),
-                escapeCsvCell('Natural / Lightning (Uninvestigated)'),
-                escapeCsvCell(`Calculated burn area: ${p.acres} acres`),
-                escapeCsvCell('Surface wildfire perimeter boundary'),
-                escapeCsvCell(false)
-            ]);
-        });
-
-        // Observations
-        result.filteredObservations.forEach((o: Observation) => {
-            rows.push([
-                escapeCsvCell(o.id),
-                escapeCsvCell('Observation'),
-                escapeCsvCell(o.observationDate),
-                escapeCsvCell(o.datePrecision),
-                escapeCsvCell(o.method),
-                escapeCsvCell(o.status),
-                escapeCsvCell(o.reportedCause || ''),
-                escapeCsvCell(o.verifiedEvidence || ''),
-                escapeCsvCell(o.analystInterpretation || ''),
-                escapeCsvCell(o.isSynthetic)
-            ]);
-        });
-
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(r => r.join(','))
-        ].join('\n');
-
-        ExportDialog.triggerDownload(
-            csvContent, 
-            `prb_evidence_records_${result.activeDateWindow.startDate}_to_${result.activeDateWindow.endDate}.csv`, 
-            'text/csv'
-        );
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
     }
+    return str;
+}
 
-    /**
-     * Generates a printable, standalone Static Map & Evidence Brief HTML window.
-     */
-    public static exportStaticBrief(
-        result: FilteredEvidenceResult, 
-        manifest: DatasetManifest,
-        mapCanvas: HTMLCanvasElement | null
-    ): void {
-        let mapDataUrl = '';
-        if (mapCanvas) {
-            try {
-                mapDataUrl = mapCanvas.toDataURL('image/png');
-            } catch (err) {
-                console.warn('Canvas export tainted or unavailable:', err);
+function summarizeGeometryCoords(geom: GeoJSON.Point | GeoJSON.Polygon | GeoJSON.MultiPolygon): string {
+    if (!geom) return 'unknown';
+    if (geom.type === 'Point') {
+        const [lon, lat] = geom.coordinates;
+        return `Point(${lon},${lat})`;
+    }
+    const coordsFlat: number[][] = [];
+    if (geom.type === 'Polygon') {
+        for (const ring of geom.coordinates) {
+            for (const pt of ring) coordsFlat.push(pt);
+        }
+    } else if (geom.type === 'MultiPolygon') {
+        for (const poly of geom.coordinates) {
+            for (const ring of poly) {
+                for (const pt of ring) coordsFlat.push(pt);
             }
         }
+    }
+    if (coordsFlat.length === 0) return `${geom.type}(empty)`;
+    let minLon = Infinity;
+    let minLat = Infinity;
+    let maxLon = -Infinity;
+    let maxLat = -Infinity;
+    for (const [lon, lat] of coordsFlat) {
+        if (lon < minLon) minLon = lon;
+        if (lon > maxLon) maxLon = lon;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+    }
+    return `${geom.type}[${minLon.toFixed(4)},${minLat.toFixed(4)}..${maxLon.toFixed(4)},${maxLat.toFixed(4)}]`;
+}
 
-        const briefHtml = `
-<!DOCTYPE html>
+function buildSourceLookup(manifest: EvidenceManifest, syntheticSources: DatasetSource[] = []): Map<string, DatasetSource> {
+    const map = new Map<string, DatasetSource>();
+    for (const ds of manifest.datasets || []) {
+        map.set(ds.id, ds);
+    }
+    for (const syn of syntheticSources) {
+        map.set(syn.id, syn);
+    }
+    return map;
+}
+
+/**
+ * Pure builder for filtered GeoJSON export string.
+ */
+export function buildExportGeoJson(
+    filtered: FilteredEvidenceResult,
+    manifest: EvidenceManifest,
+    filterState: ExportWindowMeta,
+    syntheticSources: DatasetSource[] = []
+): string {
+    const sourceLookup = buildSourceLookup(manifest, syntheticSources);
+    const siteLookup = new Map<string, CoalFireSite>(filtered.sites.map(s => [s.id, s]));
+    const features: GeoJSON.Feature[] = [];
+
+    for (const p of filtered.wildfirePerimeters) {
+        const src = sourceLookup.get(p.sourceId);
+        const { geometry, ...props } = p;
+        features.push({
+            type: 'Feature',
+            id: p.id,
+            properties: {
+                featureType: 'wildfire_perimeter',
+                ...props,
+                reportedCauseSummary: formatFireCauseRecord(p),
+                sourceUrl: src?.url || null,
+                sourcePublisher: src?.publisher || null
+            },
+            geometry
+        });
+    }
+
+    for (const o of filtered.observations) {
+        const src = sourceLookup.get(o.sourceId);
+        const site = siteLookup.get(o.siteId);
+        const { geometry, ...props } = o;
+        features.push({
+            type: 'Feature',
+            id: o.id,
+            properties: {
+                featureType: 'coal_fire_observation',
+                ...props,
+                siteName: site?.name || null,
+                coalSeam: site?.coalSeam || null,
+                groupingUncertainty: site?.groupingUncertainty || null,
+                groupingNotes: site?.groupingNotes || null,
+                sourceUrl: src?.url || null,
+                sourcePublisher: src?.publisher || null
+            },
+            geometry
+        });
+    }
+
+    for (const sv of filtered.surveys) {
+        const src = sourceLookup.get(sv.sourceId);
+        const { geometry, ...props } = sv;
+        features.push({
+            type: 'Feature',
+            id: sv.id,
+            properties: {
+                featureType: 'survey_coverage',
+                ...props,
+                sourceUrl: src?.url || null,
+                sourcePublisher: src?.publisher || null
+            },
+            geometry
+        });
+    }
+
+    for (const g of filtered.geologicalFeatures) {
+        const src = sourceLookup.get(g.sourceId);
+        const { geometry, ...props } = g;
+        features.push({
+            type: 'Feature',
+            id: g.id,
+            properties: {
+                featureType: 'geological_context',
+                ...props,
+                sourceUrl: src?.url || null,
+                sourcePublisher: src?.publisher || null
+            },
+            geometry
+        });
+    }
+
+    const out = {
+        type: 'FeatureCollection',
+        metadata: {
+            title: 'PRB Coal-Fire Evidence Explorer Filtered Export',
+            studyArea: manifest.studyArea,
+            coreQuestion: manifest.coreQuestion,
+            crs: 'EPSG:4326',
+            exportedAt: new Date().toISOString(),
+            observationWindow: {
+                startDate: filterState.startDate,
+                endDate: filterState.endDate
+            },
+            includesSyntheticFixtures: filterState.includeSynthetic,
+            syntheticWarning: filterState.includeSynthetic
+                ? 'WARNING: THIS EXPORT CONTAINS SYNTHETIC VALIDATION FIXTURES AND SCHEMATIC GEOLOGY. DO NOT CITE AS REAL FIELD DATA.'
+                : 'Verified empirical dataset only (1 WFIGS retrospective final perimeter; 0 verified coal-fire points).',
+            datasets: manifest.datasets,
+            remingtonCaseChronology: manifest.remingtonCaseChronology || null
+        },
+        features
+    };
+
+    return JSON.stringify(out, null, 2);
+}
+
+/**
+ * Pure builder for RFC 4180 CSV export covering all active spatial layers.
+ */
+export function buildExportCsv(
+    filtered: FilteredEvidenceResult,
+    manifest: EvidenceManifest,
+    syntheticSources: DatasetSource[] = []
+): string {
+    const sourceLookup = buildSourceLookup(manifest, syntheticSources);
+    const siteLookup = new Map<string, CoalFireSite>(filtered.sites.map(s => [s.id, s]));
+
+    const headers = [
+        'Record_ID',
+        'Feature_Type',
+        'Label_Or_Name',
+        'Primary_Date',
+        'End_Or_Control_Date',
+        'Map_Or_LastObserved_Date',
+        'Date_Precision_Or_Role',
+        'Status_Or_Result',
+        'Evidence_Methods',
+        'Site_ID',
+        'Grouping_Uncertainty',
+        'Accuracy_Meters',
+        'Coordinates_Or_BBox',
+        'Reported_Cause',
+        'Source_ID',
+        'Source_URL',
+        'Is_Synthetic',
+        'Notes'
+    ];
+
+    const rows: string[][] = [headers];
+
+    for (const p of filtered.wildfirePerimeters) {
+        const src = sourceLookup.get(p.sourceId);
+        rows.push([
+            p.id,
+            'wildfire_perimeter',
+            `${p.incidentName} Wildfire (${p.gisAcres} acres)`,
+            p.discoveryDate,
+            p.controlDate,
+            p.mapDate,
+            p.temporalRole,
+            p.isSynthetic ? 'synthetic_perimeter' : 'verified_perimeter',
+            p.sourceMethod || 'IR Image Interpretation',
+            '',
+            'not_applicable',
+            '10-30 (WFIGS nominal)',
+            summarizeGeometryCoords(p.geometry),
+            formatFireCauseRecord(p),
+            p.sourceId,
+            src?.url || '',
+            String(p.isSynthetic),
+            p.notes
+        ]);
+    }
+
+    for (const o of filtered.observations) {
+        const src = sourceLookup.get(o.sourceId);
+        const site = siteLookup.get(o.siteId);
+        rows.push([
+            o.id,
+            'coal_fire_observation',
+            o.label,
+            o.observationDate,
+            o.endDate || '',
+            o.lastObservedDate || '',
+            o.datePrecision,
+            o.status,
+            (o.evidenceMethods || []).join('; '),
+            o.siteId,
+            site?.groupingUncertainty || 'unknown',
+            o.accuracyMeters === null || o.accuracyMeters === undefined ? 'unknown' : String(o.accuracyMeters),
+            summarizeGeometryCoords(o.geometry),
+            '',
+            o.sourceId,
+            src?.url || '',
+            String(o.isSynthetic),
+            o.notes
+        ]);
+    }
+
+    for (const sv of filtered.surveys) {
+        const src = sourceLookup.get(sv.sourceId);
+        rows.push([
+            sv.id,
+            'survey_coverage',
+            sv.surveyName,
+            sv.surveyDate,
+            '',
+            sv.surveyDate,
+            'day',
+            sv.result,
+            sv.method,
+            '',
+            'not_applicable',
+            'unknown',
+            summarizeGeometryCoords(sv.geometry),
+            '',
+            sv.sourceId,
+            src?.url || '',
+            String(sv.isSynthetic),
+            sv.notes
+        ]);
+    }
+
+    for (const g of filtered.geologicalFeatures) {
+        const src = sourceLookup.get(g.sourceId);
+        rows.push([
+            g.id,
+            'geological_context',
+            g.unitName,
+            '',
+            '',
+            '',
+            g.scale,
+            g.unitType,
+            'stratigraphic_context',
+            '',
+            'not_applicable',
+            'schematic_non_metric',
+            summarizeGeometryCoords(g.geometry),
+            '',
+            g.sourceId,
+            src?.url || '',
+            String(g.isSynthetic),
+            g.notes
+        ]);
+    }
+
+    return rows.map(r => r.map(escapeCsvCell).join(',')).join('\n');
+}
+
+/**
+ * Pure builder for the printable Scientific Evidence Brief HTML document.
+ */
+export function buildStaticBriefHtml(
+    filtered: FilteredEvidenceResult,
+    manifest: EvidenceManifest,
+    filterState: ExportWindowMeta,
+    mapSnapshotDataUrl: string,
+    captureErrorMessage = ''
+): string {
+    const hasSynth = filtered.activeSyntheticCount > 0;
+    const chronology = manifest.remingtonCaseChronology;
+    const safeSnapshotDataUrl =
+        typeof mapSnapshotDataUrl === 'string' && /^data:image\/png(?:;base64)?,[A-Za-z0-9+/=%]+$/i.test(mapSnapshotDataUrl)
+            ? mapSnapshotDataUrl
+            : '';
+
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>PRB Coal-Fire Evidence Brief - ${result.activeDateWindow.startDate} to ${result.activeDateWindow.endDate}</title>
+    <meta charset="UTF-8" />
+    <title>PRB Coal-Fire Evidence Brief — ${escapeHtml(manifest.studyArea)}</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 40px; color: #1e293b; background: #fff; line-height: 1.5; }
-        h1 { margin-bottom: 4px; font-size: 24px; color: #0f172a; }
-        .meta-line { font-size: 13px; color: #64748b; margin-bottom: 24px; }
-        .disclaimer-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 24px; font-size: 13px; color: #92400e; }
-        .map-frame { text-align: center; margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #f8fafc; }
-        .map-frame img { max-width: 100%; height: auto; border-radius: 4px; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
-        th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Georgia, serif;
+            color: #1e293b;
+            max-width: 960px;
+            margin: 28px auto;
+            padding: 0 24px;
+            line-height: 1.5;
+        }
+        h1 { font-size: 21px; margin-bottom: 4px; color: #0f172a; }
+        h2 { font-size: 15px; margin-top: 22px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; color: #334155; }
+        .meta-bar { font-size: 12px; color: #64748b; margin-bottom: 14px; }
+        .synth-banner {
+            background: #fef3c7;
+            border: 2px solid #d97706;
+            color: #92400e;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        .verified-banner {
+            background: #ecfdf5;
+            border: 1px solid #059669;
+            color: #065f46;
+            padding: 10px 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        .capture-warning {
+            background: #fef2f2;
+            border: 1px solid #dc2626;
+            color: #991b1b;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+        .map-frame {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0;
+            text-align: center;
+            background: #f8fafc;
+        }
+        .map-frame img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+        .attribution-line {
+            font-size: 11px;
+            color: #475569;
+            background: #f1f5f9;
+            padding: 6px 10px;
+            border-top: 1px solid #cbd5e1;
+            text-align: left;
+        }
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            font-size: 12px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            padding: 10px 12px;
+            border-radius: 6px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+            margin-top: 8px;
+        }
+        th, td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
         th { background: #f1f5f9; font-weight: 600; }
-        .badge { display: inline-block; padding: 2px 6px; font-size: 10px; border-radius: 4px; font-weight: 600; text-transform: uppercase; }
-        .badge-warning { background: #fef3c7; color: #92400e; }
-        .section-title { font-size: 16px; font-weight: 700; margin-top: 28px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
-        @media print { body { margin: 15px; } .no-print { display: none; } }
+        code { font-family: ui-monospace, monospace; font-size: 10.5px; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; }
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; }
+        }
     </style>
 </head>
 <body>
-    <div class="no-print" style="margin-bottom: 20px;">
-        <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; background: #0f172a; color: #fff; border: none; border-radius: 4px; cursor: pointer;">🖨️ Print / Save as PDF</button>
+    <div class="no-print" style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+        <button onclick="window.print()" style="padding:8px 16px; background:#0284c7; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:600;">Print / Save as PDF</button>
+        <span style="font-size:12px; color:#64748b;">Generated by PRB Coal-Fire Evidence Explorer</span>
     </div>
 
     <h1>Powder River Basin Coal-Fire Evidence Brief</h1>
-    <div class="meta-line">
-        Study Area: <strong>${manifest.studyArea}</strong> | 
-        Filter Window: <strong>${result.activeDateWindow.startDate} → ${result.activeDateWindow.endDate}</strong> | 
-        Generated: ${new Date().toISOString()}
+    <div class="meta-bar">
+        <strong>Study Area:</strong> ${escapeHtml(manifest.studyArea)}<br/>
+        <strong>Observation Filter Window:</strong> ${escapeHtml(filterState.startDate)} to ${escapeHtml(filterState.endDate)} |
+        <strong>CRS:</strong> EPSG:4326 (WGS84)
     </div>
 
-    <div class="disclaimer-box">
-        <strong>CRITICAL SCIENTIFIC CAVEATS & LIMITATIONS:</strong><br>
-        1. <strong>Absence of Survey $\neq$ Absence of Fire</strong>: A region without mapped combustion vents indicates lack of published ground surveys—never confirmation of unburned coal.<br>
-        2. <strong>New Detection $\neq$ New Ignition</strong>: Detection following a wildfire does not prove wildfire causation without a confirmed pre-fire baseline.<br>
-        3. <strong>Multi-Vent Grouping</strong>: Multiple surface vents may communicate with a single subterranean combustion body.
-    </div>
+    ${
+        hasSynth
+            ? `<div class="synth-banner">⚠ SYNTHETIC VALIDATION FIXTURES ACTIVE (${filtered.activeSyntheticCount} records): This report includes synthetic test observations, negative surveys, and schematic geology. Do not cite synthetic records as empirical measurements.</div>`
+            : `<div class="verified-banner">✓ REAL MODE: Contains 1 official WFIGS retrospective final wildfire perimeter (polygon map date 2025-01-15) and 0 verified coal-fire point observations or local geology vectors.</div>`
+    }
 
-    ${mapDataUrl ? `
+    <h2>1. Core Research Question</h2>
+    <p><em>"${escapeHtml(manifest.coreQuestion)}"</em></p>
+
+    ${
+        safeSnapshotDataUrl
+            ? `
+    <h2>2. Cartographic Evidence Snapshot</h2>
     <div class="map-frame">
-        <img src="${mapDataUrl}" alt="Current Map Evidence View" />
-        <div style="font-size: 11px; color: #64748b; margin-top: 6px;">Captured Map View with Active Research Overlays</div>
+        <img src="${escapeHtml(safeSnapshotDataUrl)}" alt="PRB Map Snapshot" />
+        <div class="attribution-line">
+            <strong>Cartographic &amp; Data Attribution:</strong> © OpenFreeMap, © OpenStreetMap contributors | Terrain: AWS Open Data (Terrarium DEM) | Wildfire Perimeter: NIFC WFIGS Interagency Perimeters (Final Footprint Snapshot 2025-01-15).
+        </div>
     </div>
-    ` : ''}
+    `
+            : `
+    <h2>2. Cartographic Evidence Snapshot</h2>
+    <div class="capture-warning">
+        <strong>Map Snapshot Unavailable:</strong> ${escapeHtml(captureErrorMessage || 'WebGL canvas snapshot could not be captured in this environment.')}
+        <br/><em>Attribution:</em> © OpenFreeMap, © OpenStreetMap contributors | Terrain: AWS Open Data (Terrarium DEM) | Wildfire Perimeter: NIFC WFIGS.
+    </div>
+    `
+    }
 
-    <div class="section-title">Active Filter Summary</div>
-    <p>
-        Observations Count: <strong>${result.totalObservationsCount}</strong> | 
-        Multi-Vent Clusters: <strong>${result.multiVentClustersCount}</strong> | 
-        Wildfire Perimeters: <strong>${result.filteredPerimeters.length}</strong> | 
-        Negative Surveys: <strong>${result.negativeSurveysCount}</strong> | 
-        Synthetic Data: <strong>${result.isSyntheticActive ? 'INCLUDED (Validation Mode)' : 'EXCLUDED (Real Data Mode)'}</strong>
-    </p>
+    <h2>3. Map Symbology &amp; Legend (Color &amp; Stroke Key)</h2>
+    <div class="legend-grid">
+        <div><strong>Solid Red Outline + Translucent Fill:</strong> Official 2024 Remington Wildfire Final Perimeter (WFIGS retrospective boundary, polygon timestamp 2025-01-15; not daily fire progression).</div>
+        <div><strong>Emerald Circle (Thick White Stroke, r=8):</strong> Field-Confirmed Subsurface Combustion Vent (thermocouple / gas verification).</div>
+        <div><strong>Amber Circle (Dark Stroke, r=7):</strong> Remote/Aerial Thermal IR Sensor Detection (awaiting ground confirmation).</div>
+        <div><strong>Purple Circle (Light Stroke, r=5.5):</strong> Unverified Historical / Narrative Outcrop Report.</div>
+        <div><strong>Slate Circle (White Stroke, r=5):</strong> Extinguished / Inactive Historical Vent.</div>
+        <div><strong>Red Circle (Yellow Halo Stroke, r=9):</strong> Re-ignited Surface Vegetation Hypothesis.</div>
+        <div><strong>Dashed Orange Polygon:</strong> Parent Coal-Seam Site Complex with unresolved multi-vent subsurface connectivity.</div>
+        <div><strong>Dashed Sky-Blue Polygon:</strong> Bounded Negative Thermal Survey Footprint (surveyed, 0 anomalies detected).</div>
+        <div><strong>Dashed Amber/Slate Stratigraphic Polygons:</strong> Quarantined Schematic Clinker &amp; Coal Outcrop Context Fixtures (synthetic mode only).</div>
+    </div>
 
-    <div class="section-title">Evidence Records Log</div>
+    <h2>4. Filtered Spatial Evidence Records</h2>
     <table>
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Category</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Reported Cause</th>
-                <th>Verified Evidence</th>
+                <th>Name / Label</th>
+                <th>Event / Obs Date</th>
+                <th>Map / End Date &amp; Role</th>
+                <th>Status / Precision</th>
+                <th>Details &amp; Cause / Grouping</th>
             </tr>
         </thead>
         <tbody>
-            ${result.filteredPerimeters.map((p: FirePerimeter) => `
+            ${filtered.wildfirePerimeters
+                .map(
+                    p => `
                 <tr>
-                    <td><strong>${escapeHtml(p.incidentName)}</strong></td>
-                    <td>Wildfire Perimeter</td>
-                    <td>${escapeHtml(p.discoveryDate)}</td>
-                    <td>NIFC Verified (${p.acres.toLocaleString()} ac)</td>
-                    <td>Natural / Lightning</td>
-                    <td>IR Image Interpretation</td>
+                    <td><code>${escapeHtml(p.id)}</code></td>
+                    <td>${p.isSynthetic ? '[SYNTHETIC] Wildfire Perimeter' : 'Wildfire Perimeter'}</td>
+                    <td>${escapeHtml(p.incidentName)} (${Number(p.gisAcres).toLocaleString()} ac)</td>
+                    <td>Disc: ${escapeHtml(p.discoveryDate)}<br/>Ctrl: ${escapeHtml(p.controlDate)}</td>
+                    <td>Map Date: <strong>${escapeHtml(p.mapDate)}</strong><br/><code>${escapeHtml(p.temporalRole)}</code></td>
+                    <td>${p.isSynthetic ? 'Synthetic Perimeter' : 'Verified WFIGS'}</td>
+                    <td>Reported Cause: ${escapeHtml(formatFireCauseRecord(p))}</td>
                 </tr>
-            `).join('')}
-            ${result.filteredObservations.map((o: Observation) => `
+            `
+                )
+                .join('')}
+            ${filtered.observations
+                .map(o => {
+                    const site = filtered.sites.find(s => s.id === o.siteId);
+                    const acc = o.accuracyMeters === null ? '±unknown' : `±${o.accuracyMeters}m`;
+                    const methods = (o.evidenceMethods || []).join(', ');
+                    return `
                 <tr>
-                    <td><strong>${escapeHtml(o.id)}</strong> ${o.isSynthetic ? '<span class="badge badge-warning">Synthetic</span>' : ''}</td>
-                    <td>Observation</td>
-                    <td>${escapeHtml(o.observationDate)}</td>
-                    <td>${escapeHtml(o.status)}</td>
-                    <td>${escapeHtml(o.reportedCause)}</td>
-                    <td>${escapeHtml(o.verifiedEvidence)}</td>
+                    <td><code>${escapeHtml(o.id)}</code></td>
+                    <td>${o.isSynthetic ? '[SYNTHETIC] Observation' : 'Observation'}</td>
+                    <td>${escapeHtml(o.label)}</td>
+                    <td>${escapeHtml(o.observationDate)} (${escapeHtml(o.datePrecision)})</td>
+                    <td>${escapeHtml(o.endDate || o.lastObservedDate || '—')}</td>
+                    <td>${escapeHtml(o.status)} (${escapeHtml(acc)})<br/><small>Methods: <code>${escapeHtml(methods)}</code></small></td>
+                    <td>Site: ${escapeHtml(site?.name || o.siteId)} (${escapeHtml(site?.groupingUncertainty || 'unknown')}) — ${escapeHtml(o.notes)}</td>
                 </tr>
-            `).join('')}
+            `;
+                })
+                .join('')}
+            ${filtered.surveys
+                .map(
+                    sv => `
+                <tr>
+                    <td><code>${escapeHtml(sv.id)}</code></td>
+                    <td>${sv.isSynthetic ? '[SYNTHETIC] Survey' : 'Survey'}</td>
+                    <td>${escapeHtml(sv.surveyName)}</td>
+                    <td>${escapeHtml(sv.surveyDate)}</td>
+                    <td>—</td>
+                    <td><code>${escapeHtml(sv.result)}</code></td>
+                    <td>${escapeHtml(sv.method)} — ${escapeHtml(sv.notes)}</td>
+                </tr>
+            `
+                )
+                .join('')}
+            ${filtered.geologicalFeatures
+                .map(
+                    g => `
+                <tr>
+                    <td><code>${escapeHtml(g.id)}</code></td>
+                    <td>${g.isSynthetic ? '[SCHEMATIC FIXTURE] Geology' : 'Geology'}</td>
+                    <td>${escapeHtml(g.unitName)}</td>
+                    <td>Static</td>
+                    <td>${escapeHtml(g.scale)}</td>
+                    <td><code>${escapeHtml(g.unitType)}</code></td>
+                    <td>${escapeHtml(g.formation)} (${escapeHtml(g.coalBed)})</td>
+                </tr>
+            `
+                )
+                .join('')}
         </tbody>
     </table>
 
-    <div class="section-title">Audited Data Sources & Attributions</div>
-    <ul>
-        ${manifest.datasets.map(d => `
-            <li>
-                <strong>${escapeHtml(d.title)}</strong> (${escapeHtml(d.publisher)}) — License: ${escapeHtml(d.license)}
-                ${d.rawSha256 ? `<br><small style="color: #64748b;">SHA256: ${escapeHtml(d.rawSha256)}</small>` : ''}
-            </li>
-        `).join('')}
-    </ul>
-</body>
-</html>
-        `;
+    ${
+        chronology
+            ? `
+    <h2>5. Remington Case Study Evidence &amp; Chronology Matrix (Non-Spatial)</h2>
+    <p style="font-size:12px; color:#475569;">${escapeHtml(chronology.purpose)}</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Event Date</th>
+                <th>Report / Pub Date</th>
+                <th>Mapped Perimeter Date</th>
+                <th>Evidence Category</th>
+                <th>Claim / Reported Postfire Coal Activity</th>
+                <th>Survey Coverage, Baseline &amp; Grouping Uncertainty</th>
+                <th>Source</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${chronology.entries
+                .map(
+                    e => `
+                <tr>
+                    <td>${escapeHtml(e.eventDate)}</td>
+                    <td>${escapeHtml(e.reportOrPublicationDate)}</td>
+                    <td>${escapeHtml(e.mappedPerimeterDate)}</td>
+                    <td><code>${escapeHtml(e.evidenceCategory)}</code></td>
+                    <td><strong>Claim:</strong> ${escapeHtml(e.claimOrObservation)}<br/><strong>Coal Activity:</strong> ${escapeHtml(e.reportedPostfireCoalActivity)}</td>
+                    <td><strong>Survey:</strong> ${escapeHtml(e.surveyCoverageStatus)}<br/><strong>Baseline:</strong> ${escapeHtml(e.prefireBaselineStatus)}<br/><strong>Grouping:</strong> ${escapeHtml(e.groupingUncertainty)}</td>
+                    <td>${escapeHtml(e.sourceCitation)}</td>
+                </tr>
+            `
+                )
+                .join('')}
+        </tbody>
+    </table>
+    <p style="font-size:11.5px; margin-top:8px; background:#fffbeb; border:1px solid #fde68a; padding:8px; border-radius:4px;">
+        <strong>Separate Hydrological Literature Note — ${escapeHtml(chronology.hydrologyContextNote.citation)}:</strong>
+        ${escapeHtml(chronology.hydrologyContextNote.relevance)}
+        <em>${escapeHtml(chronology.hydrologyContextNote.epistemicLimitation)}</em>
+    </p>
+    `
+            : ''
+    }
 
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(briefHtml);
-            printWindow.document.close();
-        } else {
-            alert('Popup blocker prevented opening the export report. Please allow popups for this site.');
+    <h2>6. Data Gaps &amp; Epistemic Limitations</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Sources Checked</th>
+                <th>Scientific Impact</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${manifest.dataGapsChecklist
+                .map(
+                    g => `
+                <tr>
+                    <td><strong>${escapeHtml(g.category)}</strong></td>
+                    <td>${escapeHtml(g.status)}</td>
+                    <td>${escapeHtml(g.sourcesChecked)}</td>
+                    <td>${escapeHtml(g.scientificImpact)}</td>
+                </tr>
+            `
+                )
+                .join('')}
+        </tbody>
+    </table>
+
+    <h2>7. Dataset Provenance &amp; SHA256 Checksums</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Dataset</th>
+                <th>Publisher &amp; License</th>
+                <th>Type</th>
+                <th>Processed SHA256</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${manifest.datasets
+                .map(ds => {
+                    const safeUrl = sanitizeExternalUrl(ds.url);
+                    return `
+                <tr>
+                    <td><strong>${escapeHtml(ds.name)}</strong> ${
+                        safeUrl
+                            ? `<br/><a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(safeUrl)}</a>`
+                            : ''
+                    }</td>
+                    <td>${escapeHtml(ds.publisher)}<br/><small>${escapeHtml(ds.license)}</small></td>
+                    <td>${ds.isSynthetic ? 'Synthetic / Schematic Fixture' : 'Empirical Agency Record'}</td>
+                    <td><code>${escapeHtml(ds.processedSha256)}</code></td>
+                </tr>
+            `;
+                })
+                .join('')}
+        </tbody>
+    </table>
+</body>
+</html>`;
+}
+
+/**
+ * Triggers a browser download of filtered evidence as a GeoJSON FeatureCollection.
+ */
+export function exportFilteredGeoJson(
+    filtered: FilteredEvidenceResult,
+    manifest: EvidenceManifest,
+    filterState: ExportWindowMeta,
+    syntheticSources: DatasetSource[] = []
+): void {
+    const jsonStr = buildExportGeoJson(filtered, manifest, filterState, syntheticSources);
+    const blob = new Blob([jsonStr], { type: 'application/geo+json;charset=utf-8' });
+    triggerDownload(blob, `prb-remington-evidence-${filterState.startDate}_to_${filterState.endDate}.geojson`);
+}
+
+/**
+ * Triggers a browser download of filtered evidence as RFC 4180 CSV.
+ */
+export function exportFilteredCsv(
+    filtered: FilteredEvidenceResult,
+    manifest: EvidenceManifest,
+    filterState: ExportWindowMeta,
+    syntheticSources: DatasetSource[] = []
+): void {
+    const csvContent = buildExportCsv(filtered, manifest, syntheticSources);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    triggerDownload(blob, `prb-remington-evidence-${filterState.startDate}_to_${filterState.endDate}.csv`);
+}
+
+/**
+ * Opens a clean, printable Scientific Evidence Brief in a new browser tab/window,
+ * or falls back to downloading the HTML brief if popups are blocked.
+ */
+export function openPrintableEvidenceBrief(
+    filtered: FilteredEvidenceResult,
+    manifest: EvidenceManifest,
+    filterState: ExportWindowMeta,
+    mapCanvas?: HTMLCanvasElement | null
+): void {
+    let mapSnapshotDataUrl = '';
+    let captureErrorMessage = '';
+    if (!mapCanvas) {
+        captureErrorMessage = 'Map canvas element was not available when generating the brief.';
+    } else {
+        try {
+            mapSnapshotDataUrl = mapCanvas.toDataURL('image/png');
+            if (!mapSnapshotDataUrl || !mapSnapshotDataUrl.startsWith('data:image/png')) {
+                mapSnapshotDataUrl = '';
+                captureErrorMessage = 'Map canvas returned an empty image data URL.';
+            }
+        } catch (err) {
+            mapSnapshotDataUrl = '';
+            captureErrorMessage = `WebGL canvas capture failed (${err instanceof Error ? err.message : String(err)}).`;
         }
     }
 
-    private static triggerDownload(content: string, filename: string, mimeType: string): void {
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    const html = buildStaticBriefHtml(
+        filtered,
+        manifest,
+        filterState,
+        mapSnapshotDataUrl,
+        captureErrorMessage
+    );
+
+    const win = window.open('', '_blank');
+    if (win) {
+        win.opener = null;
+        win.document.write(html);
+        win.document.close();
+    } else {
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        triggerDownload(blob, `prb-remington-evidence-brief-${filterState.startDate}_to_${filterState.endDate}.html`);
     }
+}
+
+function triggerDownload(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
 }

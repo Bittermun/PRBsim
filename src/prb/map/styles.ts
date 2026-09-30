@@ -1,6 +1,6 @@
 /**
  * MapLibre Base Styles and Cartographic Themes for PRB Evidence Explorer
- * 
+ *
  * - Default: Restrained OpenFreeMap Positron (light/clean) or Liberty
  * - Optional: Scientific Topographic Contour & Hillshade Theme
  * - Preserves full service and data provider attribution
@@ -13,8 +13,8 @@ export const ATTRIBUTIONS = {
     openFreeMap: '© <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>',
     osm: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
     terrarium: 'Terrain: AWS Open Data (Terrarium)',
-    nifc: 'Wildfire: <a href="https://www.nifc.gov/" target="_blank" rel="noopener">NIFC WFIGS</a>',
-    mbmg: 'Geology: <a href="https://mbmg.mtech.edu/" target="_blank" rel="noopener">MBMG</a> / <a href="https://pubs.usgs.gov/" target="_blank" rel="noopener">USGS</a>'
+    nifc: 'Wildfire: <a href="https://www.nifc.gov/" target="_blank" rel="noopener">NIFC WFIGS</a> (2025-01-15 Final Footprint)',
+    mbmg: 'Schematic Geology Fixture (Synthetic Mode): Conceptual ref <a href="https://mbmg.mtech.edu/" target="_blank" rel="noopener">MBMG</a> / <a href="https://pubs.usgs.gov/" target="_blank" rel="noopener">USGS</a>'
 };
 
 export const BASEMAP_STYLES = {
@@ -81,7 +81,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
             },
         },
         layers: [
-            // Background
             {
                 id: 'background',
                 type: 'background',
@@ -89,7 +88,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'background-color': '#f8f9fa',
                 },
             },
-            // Soft Hillshade
             {
                 id: 'hillshade',
                 type: 'hillshade',
@@ -101,7 +99,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'hillshade-accent-color': '#64748b',
                 },
             },
-            // Water bodies
             {
                 id: 'water',
                 type: 'fill',
@@ -112,7 +109,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'fill-opacity': 0.7,
                 },
             },
-            // Waterway lines
             {
                 id: 'waterway',
                 type: 'line',
@@ -123,7 +119,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'line-width': 1.2,
                 },
             },
-            // Minor Contours
             {
                 id: 'contours-minor',
                 type: 'line',
@@ -136,7 +131,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'line-opacity': 0.45,
                 },
             },
-            // Major Contours
             {
                 id: 'contours-major',
                 type: 'line',
@@ -149,7 +143,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'line-opacity': 0.65,
                 },
             },
-            // Contour Labels
             {
                 id: 'contour-labels',
                 type: 'symbol',
@@ -160,7 +153,7 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'symbol-placement': 'line',
                     'text-field': ['concat', ['to-string', ['get', 'ele']], 'm'],
                     'text-size': 9,
-                    'text-font': ['Noto Sans Regular'],
+                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                     'text-max-angle': 25,
                 },
                 paint: {
@@ -169,7 +162,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'text-halo-width': 1.5,
                 },
             },
-            // Roads (subdued for orientation)
             {
                 id: 'transport-roads',
                 type: 'line',
@@ -181,7 +173,6 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'line-opacity': 0.5,
                 },
             },
-            // Places / Towns
             {
                 id: 'place-labels',
                 type: 'symbol',
@@ -190,7 +181,7 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                 layout: {
                     'text-field': ['get', 'name'],
                     'text-size': 11,
-                    'text-font': ['Noto Sans Regular'],
+                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
                     'text-transform': 'uppercase',
                 },
                 paint: {

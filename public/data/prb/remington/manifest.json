@@ -1,127 +1,168 @@
 {
-  "manifestVersion": "1.0.0",
-  "studyArea": "Remington Wildfire & Northern Powder River Basin (MT/WY)",
-  "boundingBox": [
-    -106.55,
-    44.85,
-    -106.0,
-    45.5
-  ],
-  "generatedDate": "2026-09-24",
+  "studyArea": "2024 Remington Wildfire & Southern Montana / Northern Wyoming Powder River Basin",
+  "generatedAt": "2026-09-25T00:00:00Z",
+  "coreQuestion": "Do surface vegetation wildfires generate new, persistent coal-seam fires, which can subsequently reignite surface vegetation?",
   "datasets": [
     {
-      "id": "nifc-wfigs-remington-2024",
-      "title": "WFIGS Interagency Perimeters: Remington Wildfire Final Fire Perimeter",
+      "id": "wfigs-remington-2024",
+      "name": "2024 Remington Wildfire Final Perimeter (WFIGS)",
       "publisher": "National Interagency Fire Center (NIFC) / Wildland Fire Interagency Geospatial Services (WFIGS)",
-      "originalUrl": "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Interagency_Perimeters/FeatureServer/0",
       "retrievalDate": "2026-09-24",
-      "license": "U.S. Government Work / Public Domain",
-      "coordinateSystem": "EPSG:4326 (WGS84)",
-      "spatialCoverage": "Sheridan County (WY), Campbell County (WY), Big Horn County (MT), Rosebud County (MT), Powder River County (MT)",
-      "temporalCoverage": "2024-08-22 to 2024-11-12",
-      "resolutionAccuracy": "IR Image Interpretation (approx 15-30m spatial accuracy)",
-      "rawFile": "raw/wfigs_remington_raw.geojson",
+      "url": "https://data-nifc.opendata.arcgis.com/",
+      "license": "Public Domain (U.S. Government Work)",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "\u00b110m to \u00b130m (Aerial IR & GPS perimeter mapping)",
+      "limitations": "Represents the final cumulative surface wildfire footprint (196,368.1 acres; polygon snapshot poly_PolygonDateTime 2025-01-15). Does not provide daily progression perimeters, internal unburned island high-resolution burn severity, or subsurface thermal measurements.",
       "rawSha256": "3a4dd938a4733db4908cc783642448ec31e0aeeb4bca0f52e334c83089749986",
-      "processedFile": "remington_fire_perimeter.geojson",
-      "processedSha256": "af295a6143db8aca4db17e7679b7e075348d1dda5f13c2e1f0b07e5be55b2e07",
-      "originalFields": {
-        "poly_IncidentName": "Wildfire incident name ('Remington')",
-        "poly_GISAcres": "Calculated burned acreage (196,368.1 acres)",
-        "poly_MapMethod": "Perimeter delineation methodology ('IR Image Interpretation')",
-        "attr_FireDiscoveryDateTime": "Discovery epoch (1724335620000 = 2024-08-22 14:07:00 UTC)",
-        "attr_ContainmentDateTime": "Containment epoch (1726959600000 = 2024-09-21 23:00:00 UTC)",
-        "attr_ControlDateTime": "Control epoch (1731432600000 = 2024-11-12 17:30:00 UTC)",
-        "attr_FireCauseGeneral": "Reported general cause ('Natural')",
-        "attr_FireCauseSpecific": "Reported specific cause ('Lightning')",
-        "attr_IsFireCauseInvestigated": "Flag indicating cause was not formally investigated (0)"
-      },
-      "transformations": "Extracted feature OBJECTID 35207, validated WGS84 coordinates, encapsulated in standard GeoJSON FeatureCollection with research metadata header.",
-      "scientificLimitations": [
-        "Perimeter represents outer envelope of wildfire event; does not delineate unburned interior islands or micro-scale intensity.",
-        "IR image interpretation does not indicate depth of burn or ground heating beneath canopy/soil.",
-        "Does NOT record subsurface coal seam combustion."
-      ]
+      "processedSha256": "1c0f9dd951286449d08045278f27a39b150b960f39f52cf47d25a0808582cc72",
+      "isSynthetic": false
     },
     {
       "id": "usgs-mbmg-prb-geology",
-      "title": "Powder River Basin Coal & Clinker Stratigraphic Framework",
-      "publisher": "U.S. Geological Survey (USGS) & Montana Bureau of Mines and Geology (MBMG)",
-      "originalUrl": "https://pubs.usgs.gov/pp/p1625a/ & https://mbmg.mtech.edu/MontanaGeology/EnergyResources/coal.asp",
+      "name": "PRB Schematic Stratigraphic Context Fixtures (Non-Empirical)",
+      "publisher": "PRBsim Project (Hand-Constructed Schematic Polygons; Conceptual Reference Only to USGS PP 1625-A & MBMG)",
       "retrievalDate": "2026-09-24",
-      "license": "Public Domain (USGS) / State Government Open Data (MBMG)",
-      "coordinateSystem": "EPSG:4326 (WGS84)",
-      "spatialCoverage": "Northern Powder River Basin (Tongue River Member)",
-      "temporalCoverage": "Geologic time (Paleocene to Holocene)",
-      "resolutionAccuracy": "1:100,000 to 1:500,000 regional mapping",
-      "processedFile": "geological_context.geojson",
-      "processedSha256": "e53cf41b805ae12f0c3f80c667be136cf9c0b3a56ac9d418582422951e3f1bb9",
-      "originalFields": {
-        "strata": "Stratigraphic formation and member nomenclature",
-        "category": "Classification (coal_bearing_strata, historic_clinker_outcrop, overburden)"
-      },
-      "transformations": "Synthesized regional boundaries for Tongue River Member coal beds and clinker outcrop belts within the Remington study area.",
-      "scientificLimitations": [
-        "Regional-scale geologic boundaries; contact accuracy is approximately 100-250m.",
-        "Clinker identifies areas where coal burned in prehistoric/historic times; it does not indicate whether active combustion persists today at a specific point.",
-        "Presence of coal bed does not imply active outcrop combustion."
-      ]
+      "url": "https://pubs.usgs.gov/pp/p1625a/",
+      "license": "CC0-1.0 (PRBsim Schematic Fixture \u2014 Not an official USGS/MBMG cartographic product)",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Not applicable \u2014 arbitrary hand-placed bounding box and schematic polygons",
+      "limitations": "SCHEMATIC UI FIXTURES ONLY (`isSynthetic: true`). These polygons were hand-coded in `scripts/prb/prepare_data.py` and do NOT represent extracted USGS or MBMG vector boundaries. Excluded from default real-data views and real-data exports.",
+      "rawSha256": "e03ccd44b53361eacafc4ebffb89d999716cb96f38e86b26f6d15018823857aa",
+      "processedSha256": "e03ccd44b53361eacafc4ebffb89d999716cb96f38e86b26f6d15018823857aa",
+      "isSynthetic": true
     },
     {
       "id": "synthetic-validation-fixtures",
-      "title": "Synthetic Validation Fixtures (Multi-Vent, Negative Survey, Precision Edge Cases)",
-      "publisher": "PRBsim Development & Validation Suite",
-      "originalUrl": "Local test artifact",
+      "name": "Synthetic Validation Fixtures (Multi-Vent & Negative Survey Test Cases)",
+      "publisher": "PRBsim Verification Suite",
       "retrievalDate": "2026-09-24",
-      "license": "GPLv3 (Test Code)",
-      "coordinateSystem": "EPSG:4326 (WGS84)",
-      "spatialCoverage": "Synthetic local coordinates within Remington study area",
-      "temporalCoverage": "1978 to 2024",
-      "resolutionAccuracy": "Explicitly defined synthetic test records",
-      "processedFile": "synthetic_fixtures.json",
-      "processedSha256": "28fdbfb878663f2308790e134f57ae47d78a3fe15a46f8cdb6fe57123790f71d",
-      "isSynthetic": true,
-      "scientificLimitations": [
-        "EXCLUSIVELY FOR SOFTWARE BEHAVIOR TESTING.",
-        "DO NOT USE FOR SCIENTIFIC INFERENCE OR EMPIRICAL CLAIMS.",
-        "EXCLUDED FROM DEFAULT REAL DATASET VIEW."
-      ]
-    }
-  ],
-  "auditedSourcesWithoutDirectInventory": [
-    {
-      "source": "Montana Bureau of Mines and Geology (MBMG) Coal Program",
-      "url": "https://mbmg.mtech.edu/MontanaGeology/EnergyResources/coal.asp",
-      "auditResult": "Contains coal chemistry, resource stratigraphy, and drilling logs; does NOT maintain active coal seam combustion vent inventories for recent wildfires."
-    },
-    {
-      "source": "Monitoring Trends in Burn Severity (MTBS)",
-      "url": "https://www.mtbs.gov/project-overview",
-      "auditResult": "Targeted at large wildfires (>= 1,000 acres in Western US); maps surface satellite burn severity (dNBR); does NOT map subsurface coal seam fires or localized vent emissions."
-    },
-    {
-      "source": "Custer County Disaster & Emergency Services (DES)",
-      "url": "https://custercountymt.gov/services/disaster-emergency-services/",
-      "auditResult": "Provides public emergency alerts, Nixle notifications, and coordinator contact information; does NOT publish public GIS layers or incident log databases for coal fires."
+      "url": "https://github.com/Bittermun/PRBsim",
+      "license": "CC0-1.0",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Synthetic test coordinates (and explicit null accuracy test case)",
+      "limitations": "STRICTLY SYNTHETIC TEST DATA. Quarantined from default view; must never be cited as empirical evidence.",
+      "rawSha256": "afe3f3a3107a11ade6fd080d4add9a86f42d813171cc388db5c4d0e327ae1288",
+      "processedSha256": "afe3f3a3107a11ade6fd080d4add9a86f42d813171cc388db5c4d0e327ae1288",
+      "isSynthetic": true
     }
   ],
   "dataGapsChecklist": [
     {
-      "item": "Active Subsurface Coal Combustion Vent Inventory",
-      "status": "MISSING / UNAVAILABLE IN PUBLIC REPOSITORIES",
-      "impact": "Cannot display verified points of active coal burning for the 2024 Remington Fire. Application MUST show honest empty/data-gap state in real-data mode.",
-      "remedy": "File formal data requests with Montana DEQ (Abandoned Mine Lands Program), BLM Miles City Field Office, and local fire protection districts using the included data request draft."
+      "category": "Verified Post-2024 Subsurface Coal-Fire Point Inventory",
+      "status": "NOT ACQUIRED FROM SOURCES CHECKED (Sept 2026)",
+      "sourcesChecked": "NIFC WFIGS, MT DNRC, BLM Montana/Dakotas Public GIS, MBMG Open-File Catalog, USGS ScienceBase (checked 2026-09-24).",
+      "scientificImpact": "Default real-data mode contains 1 official wildfire perimeter and 0 verified coal-fire point observations. Secondary reporting (Montana Free Press, Sept 2025) describes 107 burning seams mapped after the Remington fire, and a Feb 2026 Montana DES mapping bulletin is noted as a primary-source lead, but no public coordinate inventory with precision and pre-fire baseline metadata has been acquired."
     },
     {
-      "item": "Pre-Fire Thermal Baseline",
-      "status": "UNAVAILABLE",
-      "impact": "Cannot prove whether any newly detected coal fire was ignited by the August 2024 wildfire vs. pre-existing smolder.",
-      "remedy": "Acquire archival high-resolution thermal infrared satellite imagery (e.g. ECOSTRESS, Landsat 8/9 TIRS) prior to August 21, 2024."
+      "category": "Source-Backed Local Clinker & Coal Outcrop Vector Layer",
+      "status": "NOT ACQUIRED IN REPOSITORY (Schematic Fixture Quarantined)",
+      "sourcesChecked": "USGS Professional Paper 1625-A & MBMG regional stratigraphy catalogs (checked 2026-09-24).",
+      "scientificImpact": "No survey-grade digitized coal outcrop or clinker polygon layer is currently bundled. Hand-drawn schematic polygons are quarantined behind the Synthetic Validation Fixtures toggle so they cannot be mistaken for observed geology."
     },
     {
-      "item": "Subsurface Vent Connectivity Mapping",
-      "status": "UNAVAILABLE",
-      "impact": "Multiple surface vents cannot be counted as separate fires without geophysical or isotopic proof.",
-      "remedy": "Preserve grouping uncertainty; treat proximal vents as unresolved multi-vent complexes."
+      "category": "Pre-Fire vs. Post-Fire Thermal Baseline (Before August 22, 2024)",
+      "status": "MISSING SYSTEMATIC BASELINE IN ACQUIRED DATA",
+      "sourcesChecked": "LANDFIRE, USGS Coal Fields of the Conterminous US, Heffern & Coates (2004) synthesis.",
+      "scientificImpact": "First post-fire detection of a smoldering seam cannot be equated with new ignition by the 2024 Remington Wildfire unless pre-fire absence or new ignition mechanism is independently established."
+    },
+    {
+      "category": "Multi-Vent Subsurface Connectivity & Site Grouping",
+      "status": "UNRESOLVED IN SURFACE OBSERVATIONS",
+      "sourcesChecked": "Geophysical coal-fire literature (borehole thermometry, electrical resistivity, UAV FLIR).",
+      "scientificImpact": "Multiple surface fumaroles along a clinker bench may stem from a single continuous underground combustion zone; treating individual vents as independent ignitions inflates fire counts."
     }
-  ]
+  ],
+  "auditedSources": [
+    {
+      "agencyOrCatalog": "NIFC WFIGS Interagency Fire Perimeters",
+      "searchParameters": "poly_IncidentName LIKE '%REMINGTON%' (2024)",
+      "result": "Acquired official 196,368.1-acre final perimeter (IRWIN ID {2B136641-8C91-4C70-960D-64E05BC390E4}, UniqueFireIdentifier 2024-WYSHX-240442, polygon timestamp 2025-01-15).",
+      "url": "https://data-nifc.opendata.arcgis.com/"
+    },
+    {
+      "agencyOrCatalog": "USGS National Coal Resource Assessment (PP 1625-A) & MBMG",
+      "searchParameters": "Powder River Basin coal beds, Fort Union Formation, clinker outcrops",
+      "result": "Literature context reviewed; no raw USGS/MBMG vector features are bundled in default mode (schematic polygons are quarantined as synthetic fixtures).",
+      "url": "https://pubs.usgs.gov/pp/p1625a/"
+    },
+    {
+      "agencyOrCatalog": "Montana Free Press (Sept 2025) & Montana DES Mapping Bulletin Lead (Feb 2026)",
+      "searchParameters": "Remington Fire post-fire coal seam fire mapping (107 reported seams)",
+      "result": "Cataloged in the non-spatial Remington Case Study Evidence Matrix as attributed reporting / primary-source follow-up leads; no point coordinates fabricated.",
+      "url": "https://montanafreepress.org/"
+    },
+    {
+      "agencyOrCatalog": "Meredith (2016) Powder River Basin Coal Aquifer Hydrology",
+      "searchParameters": "Coal aquifer contribution to streams in the Powder River Basin, Montana",
+      "result": "Cataloged in separate hydrology context note (isotopic baseflow tracing only; does not establish coal-fire contaminant plumes).",
+      "url": "https://mbmg.mtech.edu/"
+    }
+  ],
+  "remingtonCaseChronology": {
+    "title": "2024 Remington Wildfire & Post-Fire Coal Seam Activity \u2014 Source-Linked Evidence Matrix",
+    "purpose": "Distinguishes what the official 2024\u20132025 geospatial record establishes from attributed secondary reporting, unacquired primary survey inventories, and separate regional hydrology literature.",
+    "entries": [
+      {
+        "id": "chron-wfigs-discovery-2024-08-22",
+        "eventDate": "2024-08-22",
+        "reportOrPublicationDate": "2024-08-22",
+        "mappedPerimeterDate": "2025-01-15",
+        "evidenceCategory": "verified_geospatial_record",
+        "claimOrObservation": "Remington Wildfire discovery timestamp (attr_FireDiscoveryDateTime) in Sheridan County, WY, burning northward into Big Horn, Rosebud, and Powder River Counties, MT. Reported general/specific cause in WFIGS: Natural / Lightning (attr_IsFireCauseInvestigated: 0).",
+        "reportedPostfireCoalActivity": "Not recorded in WFIGS perimeter attributes.",
+        "surveyCoverageStatus": "Final cumulative perimeter only (196,368.1 GIS acres); no daily progression series in repository.",
+        "prefireBaselineStatus": "No pre-August 2024 coal-seam thermal baseline included in WFIGS.",
+        "groupingUncertainty": "N/A (surface wildfire perimeter)",
+        "sourceCitation": "NIFC WFIGS Interagency Perimeters (IRWIN ID {2B136641-8C91-4C70-960D-64E05BC390E4})",
+        "sourceUrl": "https://data-nifc.opendata.arcgis.com/"
+      },
+      {
+        "id": "chron-wfigs-containment-control-2024",
+        "eventDate": "2024-09-21 to 2024-11-12",
+        "reportOrPublicationDate": "2025-01-15",
+        "mappedPerimeterDate": "2025-01-15",
+        "evidenceCategory": "verified_geospatial_record",
+        "claimOrObservation": "WFIGS records containment on 2024-09-21, control on 2024-11-12, and final polygon snapshot timestamp (poly_PolygonDateTime) on 2025-01-15.",
+        "reportedPostfireCoalActivity": "None in WFIGS.",
+        "surveyCoverageStatus": "Single retrospective final boundary snapshot (2025-01-15).",
+        "prefireBaselineStatus": "Unresolved in WFIGS.",
+        "groupingUncertainty": "N/A (surface wildfire perimeter)",
+        "sourceCitation": "NIFC WFIGS Interagency Perimeters (UniqueFireIdentifier 2024-WYSHX-240442)",
+        "sourceUrl": "https://data-nifc.opendata.arcgis.com/"
+      },
+      {
+        "id": "chron-mtfp-attributed-report-2025-09",
+        "eventDate": "2024\u20132025 (post-Remington survey period)",
+        "reportOrPublicationDate": "2025-09",
+        "mappedPerimeterDate": "Unpublished in public GIS (non-spatial narrative lead)",
+        "evidenceCategory": "attributed_secondary_report",
+        "claimOrObservation": "Montana Free Press (reporter Leigh Walden, Sept 2025) reported that local/agency post-fire mapping identified 107 burning coal seams in connection with the 2024 Remington Wildfire scar.",
+        "reportedPostfireCoalActivity": "Attributed report of '107 burning seams' mapped after the 2024 Remington fire. Treated strictly as an attributed secondary lead \u2014 NOT a verified point inventory or a count of newly ignited independent subsurface combustion bodies until traced to primary survey records.",
+        "surveyCoverageStatus": "Underlying GPS/IR survey tracklines, detection thresholds, and negative-survey boundaries have not been published in public GIS repositories.",
+        "prefireBaselineStatus": "UNRESOLVED: Public reporting does not establish how many of the 107 mapped thermal features were newly ignited by August 2024 surface wildfire pass-over versus pre-existing smoldering seams exposed or noticed during post-fire inspections.",
+        "groupingUncertainty": "UNRESOLVED MULTI-VENT AMBIGUITY: Without the primary survey protocol, it is unknown whether '107' counts individual surface smoke/heat vents along shared coal outcrops or 107 physically independent subsurface combustion bodies.",
+        "sourceCitation": "Leigh Walden, Montana Free Press (September 2025 reporting on post-Remington coal seam fires)",
+        "sourceUrl": "https://montanafreepress.org/"
+      },
+      {
+        "id": "chron-mtdes-bulletin-lead-2026-02",
+        "eventDate": "2025\u20132026 (state/county mapping follow-up)",
+        "reportOrPublicationDate": "2026-02",
+        "mappedPerimeterDate": "Primary dataset not yet acquired",
+        "evidenceCategory": "unverified_primary_source_lead",
+        "claimOrObservation": "February 2026 Montana Disaster and Emergency Services (MT DES) / county coal-seam mapping bulletin identified as a primary-source follow-up lead to verify survey holder metadata, coordinates, and detection methodology behind post-Remington coal-fire counts.",
+        "reportedPostfireCoalActivity": "Primary GIS point/polygon inventory and attribute table not acquired in local repository as of Sept 2026.",
+        "surveyCoverageStatus": "Pending primary agency data acquisition; rendered as non-spatial lead only.",
+        "prefireBaselineStatus": "Requires cross-checking against pre-2024 MBMG/BLM outcrop fire records.",
+        "groupingUncertainty": "Pending primary survey attribute definitions (individual fumaroles vs. seam complexes).",
+        "sourceCitation": "Montana DES / County Emergency Management Mapping Bulletin Lead (Feb 2026)",
+        "sourceUrl": "https://des.mt.gov/"
+      }
+    ],
+    "hydrologyContextNote": {
+      "citation": "Meredith, E. (2016). Coal aquifer contribution to streams in the Powder River Basin, Montana. Journal of Hydrology / MBMG.",
+      "relevance": "Establishes water-isotope and strontium-isotope methods for quantifying coal-bed aquifer baseflow contributions to Powder River Basin streams (including Rosebud Creek, Tongue River, and Otter Creek).",
+      "epistemicLimitation": "SEPARATE RESEARCH BRANCH: Meredith (2016) traces natural coal-aquifer groundwater contribution to streams, NOT active coal-fire combustion contaminant plumes or post-wildfire ash runoff. PRBsim intentionally does NOT render groundwater contamination zones or hydrological plume polygons from coal-bearing stratigraphy."
+    }
+  }
 }
