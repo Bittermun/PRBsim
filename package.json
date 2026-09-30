@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test tests/**/*.test.js"
+    "test": "node --experimental-strip-types --test \"tests/**/*.test.js\""
   },
   "devDependencies": {
     "typescript": "^5.0.0",
