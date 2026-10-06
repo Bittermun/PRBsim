@@ -14,6 +14,8 @@ import type {
     CoalFireSite
 } from '../data/types.ts';
 import type { FilteredEvidenceResult } from '../data/select.ts';
+import type { LocationAssessment } from '../data/assessment.ts';
+import { ValidationError } from '../data/load.ts';
 import { escapeHtml, formatFireCauseRecord, sanitizeExternalUrl } from './EvidencePanel.ts';
 
 export interface ExportWindowMeta {
@@ -81,14 +83,155 @@ function buildSourceLookup(manifest: EvidenceManifest, syntheticSources: Dataset
 }
 
 /**
+ * Validates that an assessment is valid to export alongside the active filtered dataset.
+ */
+export function validateAssessmentForExport(
+    assessment: LocationAssessment | null | undefined,
+    filtered: FilteredEvidenceResult,
+    filterState: ExportWindowMeta
+): void {
+    if (!assessment) return;
+
+    if (!filterState.includeSynthetic && assessment.syntheticInfluence) {
+        throw new ValidationError('Cannot export assessment influenced by synthetic fixtures in Real Mode.');
+    }
+
+    if (
+        assessment.filterWindow.startDate !== filterState.startDate ||
+        assessment.filterWindow.endDate !== filterState.endDate ||
+        assessment.filterWindow.includeSynthetic !== filterState.includeSynthetic
+    ) {
+        throw new ValidationError('Assessment filter window does not match current export filter state.');
+    }
+
+    if (assessment.selection.kind === 'observation') {
+        const obsId = assessment.selection.observationId;
+        const exists = filtered.observations.some(o => o.id === obsId);
+        if (!exists) {
+            throw new ValidationError(`Selected assessment observation '${obsId}' is not active in current filtered view.`);
+        }
+    }
+}
+
+/**
+ * Pure builder for RFC 4180 CSV export of a location assessment.
+ */
+export function buildAssessmentCsv(assessment: LocationAssessment): string {
+    const headers = [
+        'Assessment_Schema_Version',
+        'Method_Version',
+        'Query_Origin',
+        'Coordinate_Lon',
+        'Coordinate_Lat',
+        'Observation_ID',
+        'Observation_Date',
+        'Observation_Date_Precision',
+        'Observation_End_Date',
+        'Last_Observed_Date',
+        'Accuracy_Meters',
+        'Perimeter_ID',
+        'Nominal_Relation',
+        'Approximate_Boundary_Distance_Meters',
+        'Coordinate_Uncertainty',
+        'Days_From_Incident_Discovery',
+        'Temporal_Reference',
+        'Geological_Record_IDs',
+        'Survey_Record_IDs',
+        'Synthetic_Influence',
+        'Causal_Conclusion',
+        'Filter_Start_Date',
+        'Filter_End_Date',
+        'Filter_Include_Synthetic',
+        'Input_References_JSON',
+        'Caveats'
+    ];
+
+    const rows: string[][] = [headers];
+
+    const obsId = assessment.selection.kind === 'observation' ? assessment.selection.observationId : '';
+    const inputRefsJson = JSON.stringify(assessment.inputReferences);
+    const caveatsStr = assessment.caveats
+        .map(c => (/^[=+\-@\t\r]/.test(c) ? `'${c}` : c))
+        .join('; ');
+    const geoIdsStr = assessment.geologicalRecordIds.join(';');
+    const survIdsStr = assessment.surveyRecordIds.join(';');
+
+    if (assessment.relationships.length === 0) {
+        rows.push([
+            String(assessment.schemaVersion),
+            assessment.methodVersion,
+            assessment.queryOrigin,
+            String(assessment.coordinate[0]),
+            String(assessment.coordinate[1]),
+            obsId,
+            assessment.observationDate || '',
+            assessment.observationDatePrecision || '',
+            assessment.observationEndDate || '',
+            assessment.lastObservedDate || '',
+            assessment.accuracyMeters !== null ? String(assessment.accuracyMeters) : '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            geoIdsStr,
+            survIdsStr,
+            String(assessment.syntheticInfluence),
+            assessment.causalConclusion,
+            assessment.filterWindow.startDate,
+            assessment.filterWindow.endDate,
+            String(assessment.filterWindow.includeSynthetic),
+            inputRefsJson,
+            caveatsStr
+        ]);
+    } else {
+        for (const rel of assessment.relationships) {
+            rows.push([
+                String(assessment.schemaVersion),
+                assessment.methodVersion,
+                assessment.queryOrigin,
+                String(assessment.coordinate[0]),
+                String(assessment.coordinate[1]),
+                obsId,
+                assessment.observationDate || '',
+                assessment.observationDatePrecision || '',
+                assessment.observationEndDate || '',
+                assessment.lastObservedDate || '',
+                assessment.accuracyMeters !== null ? String(assessment.accuracyMeters) : '',
+                rel.perimeterId,
+                rel.nominalRelation,
+                String(rel.approximateBoundaryDistanceMeters),
+                rel.coordinateUncertainty,
+                rel.daysFromIncidentDiscovery !== null ? String(rel.daysFromIncidentDiscovery) : '',
+                rel.temporalReference,
+                geoIdsStr,
+                survIdsStr,
+                String(assessment.syntheticInfluence),
+                assessment.causalConclusion,
+                assessment.filterWindow.startDate,
+                assessment.filterWindow.endDate,
+                String(assessment.filterWindow.includeSynthetic),
+                inputRefsJson,
+                caveatsStr
+            ]);
+        }
+    }
+
+    return rows.map(r => r.map(escapeCsvCell).join(',')).join('\r\n') + '\r\n';
+}
+
+/**
  * Pure builder for filtered GeoJSON export string.
  */
 export function buildExportGeoJson(
     filtered: FilteredEvidenceResult,
     manifest: EvidenceManifest,
     filterState: ExportWindowMeta,
-    syntheticSources: DatasetSource[] = []
+    syntheticSources: DatasetSource[] = [],
+    assessment?: LocationAssessment | null
 ): string {
+    validateAssessmentForExport(assessment, filtered, filterState);
     const sourceLookup = buildSourceLookup(manifest, syntheticSources);
     const siteLookup = new Map<string, CoalFireSite>(filtered.sites.map(s => [s.id, s]));
     const features: GeoJSON.Feature[] = [];
@@ -180,7 +323,8 @@ export function buildExportGeoJson(
                 ? 'WARNING: THIS EXPORT CONTAINS SYNTHETIC VALIDATION FIXTURES AND SCHEMATIC GEOLOGY. DO NOT CITE AS REAL FIELD DATA.'
                 : 'Verified empirical dataset only (1 WFIGS retrospective final perimeter; 0 verified coal-fire points).',
             datasets: manifest.datasets,
-            remingtonCaseChronology: manifest.remingtonCaseChronology || null
+            remingtonCaseChronology: manifest.remingtonCaseChronology || null,
+            ...(assessment ? { locationAssessment: assessment } : {})
         },
         features
     };
@@ -330,14 +474,18 @@ export function buildStaticBriefHtml(
     manifest: EvidenceManifest,
     filterState: ExportWindowMeta,
     mapSnapshotDataUrl: string,
-    captureErrorMessage = ''
+    captureErrorMessage = '',
+    assessment?: LocationAssessment | null
 ): string {
+    validateAssessmentForExport(assessment, filtered, filterState);
     const hasSynth = filtered.activeSyntheticCount > 0;
     const chronology = manifest.remingtonCaseChronology;
     const safeSnapshotDataUrl =
         typeof mapSnapshotDataUrl === 'string' && /^data:image\/png(?:;base64)?,[A-Za-z0-9+/=%]+$/i.test(mapSnapshotDataUrl)
             ? mapSnapshotDataUrl
             : '';
+
+    let sec = 1;
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -449,13 +597,13 @@ export function buildStaticBriefHtml(
             : `<div class="verified-banner">✓ REAL MODE: Contains 1 official WFIGS retrospective final wildfire perimeter (polygon map date 2025-01-15) and 0 verified coal-fire point observations or local geology vectors.</div>`
     }
 
-    <h2>1. Core Research Question</h2>
+    <h2>${sec++}. Core Research Question</h2>
     <p><em>"${escapeHtml(manifest.coreQuestion)}"</em></p>
 
     ${
         safeSnapshotDataUrl
             ? `
-    <h2>2. Cartographic Evidence Snapshot</h2>
+    <h2>${sec++}. Cartographic Evidence Snapshot</h2>
     <div class="map-frame">
         <img src="${escapeHtml(safeSnapshotDataUrl)}" alt="PRB Map Snapshot" />
         <div class="attribution-line">
@@ -464,7 +612,7 @@ export function buildStaticBriefHtml(
     </div>
     `
             : `
-    <h2>2. Cartographic Evidence Snapshot</h2>
+    <h2>${sec++}. Cartographic Evidence Snapshot</h2>
     <div class="capture-warning">
         <strong>Map Snapshot Unavailable:</strong> ${escapeHtml(captureErrorMessage || 'WebGL canvas snapshot could not be captured in this environment.')}
         <br/><em>Attribution:</em> © OpenFreeMap, © OpenStreetMap contributors | Terrain: AWS Open Data (Terrarium DEM) | Wildfire Perimeter: NIFC WFIGS.
@@ -472,7 +620,85 @@ export function buildStaticBriefHtml(
     `
     }
 
-    <h2>3. Map Symbology &amp; Legend (Color &amp; Stroke Key)</h2>
+    ${
+        assessment
+            ? `
+    <h2>${sec++}. Spatiotemporal Evidence Analysis (Targeted Location Assessment)</h2>
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+        <p style="margin: 0 0 8px 0; font-size: 13px;">
+            <strong>Query Origin:</strong> ${escapeHtml(assessment.queryOrigin === 'user_selected_coordinate' ? 'User-Selected Query Coordinate' : 'Observed Coal-Fire Point')} |
+            <strong>Coordinates:</strong> <code>[${assessment.coordinate[0].toFixed(5)}, ${assessment.coordinate[1].toFixed(5)}]</code> |
+            <strong>Accuracy:</strong> ${assessment.accuracyMeters !== null ? `±${assessment.accuracyMeters}m` : 'Unknown'} |
+            <strong>Method Version:</strong> <code>${escapeHtml(assessment.methodVersion)}</code>
+        </p>
+        ${
+            assessment.syntheticInfluence
+                ? `<div class="synth-banner" style="margin-bottom: 8px;">
+            ⚠ SYNTHETIC INFLUENCE WARNING: This assessment incorporates synthetic validation fixtures or schematic geology. Do not cite as empirical field evidence.
+        </div>`
+                : ''
+        }
+        <div style="margin-bottom: 8px; font-size: 12.5px;">
+            <strong>Causal Attribution Assessment:</strong> <span style="font-weight: 700; color: #475569;">UNRESOLVED</span> (Nominal status: <code>${escapeHtml(assessment.causalConclusion)}</code>)
+        </div>
+        <table style="margin-top: 8px;">
+            <thead>
+                <tr>
+                    <th>Wildfire Perimeter</th>
+                    <th>Spatial Footprint Relation</th>
+                    <th>Approx. Boundary Dist</th>
+                    <th>Timing Relative to Incident Discovery</th>
+                    <th>Temporal Reference &amp; Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${assessment.relationships
+                    .map(
+                        rel => `
+                <tr>
+                    <td><code>${escapeHtml(rel.perimeterId)}</code></td>
+                    <td><strong>${rel.nominalRelation.toUpperCase()}</strong> (${escapeHtml(rel.coordinateUncertainty)})</td>
+                    <td>${Math.round(rel.approximateBoundaryDistanceMeters).toLocaleString()} m</td>
+                    <td>${rel.daysFromIncidentDiscovery !== null ? `${rel.daysFromIncidentDiscovery > 0 ? '+' : ''}${rel.daysFromIncidentDiscovery} days` : 'No observation date'}</td>
+                    <td><code>${escapeHtml(rel.temporalReference)}</code><br/><small>Local fire arrival: unavailable</small></td>
+                </tr>
+                `
+                    )
+                    .join('')}
+            </tbody>
+        </table>
+
+        ${
+            assessment.pathways && assessment.pathways.length > 0
+                ? `
+        <div style="margin-top: 12px;">
+            <strong style="font-size: 12px;">Non-Exclusive Research Pathways Under Investigation:</strong>
+            <ul style="margin: 4px 0 8px 20px; font-size: 11.5px; padding: 0;">
+                ${assessment.pathways
+                    .map(
+                        p => `
+                <li><strong>${escapeHtml(p.question)}</strong> — <em>Status: ${escapeHtml(p.evidenceStatus.toUpperCase())}</em><br/>
+                <small>Required: ${escapeHtml(p.requiredEvidence.join(', '))} | Missing: ${escapeHtml(p.missingEvidenceInActiveView.join(', '))}</small></li>
+                `
+                    )
+                    .join('')}
+            </ul>
+        </div>`
+                : ''
+        }
+
+        <div style="margin-top: 10px; font-size: 11.5px; background: #fffbeb; border: 1px solid #fde68a; padding: 8px; border-radius: 4px;">
+            <strong>Epistemic Caveats &amp; Limitations:</strong>
+            <ul style="margin: 4px 0 0 18px; padding: 0;">
+                ${assessment.caveats.map(c => `<li>${escapeHtml(c)}</li>`).join('')}
+            </ul>
+        </div>
+    </div>
+    `
+            : ''
+    }
+
+    <h2>${sec++}. Map Symbology &amp; Legend (Color &amp; Stroke Key)</h2>
     <div class="legend-grid">
         <div><strong>Solid Red Outline + Translucent Fill:</strong> Official 2024 Remington Wildfire Final Perimeter (WFIGS retrospective boundary, polygon timestamp 2025-01-15; not daily fire progression).</div>
         <div><strong>Emerald Circle (Thick White Stroke, r=8):</strong> Field-Confirmed Subsurface Combustion Vent (thermocouple / gas verification).</div>
@@ -485,7 +711,7 @@ export function buildStaticBriefHtml(
         <div><strong>Dashed Amber/Slate Stratigraphic Polygons:</strong> Quarantined Schematic Clinker &amp; Coal Outcrop Context Fixtures (synthetic mode only).</div>
     </div>
 
-    <h2>4. Filtered Spatial Evidence Records</h2>
+    <h2>${sec++}. Filtered Spatial Evidence Records</h2>
     <table>
         <thead>
             <tr>
@@ -568,7 +794,7 @@ export function buildStaticBriefHtml(
     ${
         chronology
             ? `
-    <h2>5. Remington Case Study Evidence &amp; Chronology Matrix (Non-Spatial)</h2>
+    <h2>${sec++}. Remington Case Study Evidence &amp; Chronology Matrix (Non-Spatial)</h2>
     <p style="font-size:12px; color:#475569;">${escapeHtml(chronology.purpose)}</p>
     <table>
         <thead>
@@ -609,7 +835,7 @@ export function buildStaticBriefHtml(
             : ''
     }
 
-    <h2>6. Data Gaps &amp; Epistemic Limitations</h2>
+    <h2>${sec++}. Data Gaps &amp; Epistemic Limitations</h2>
     <table>
         <thead>
             <tr>
@@ -635,7 +861,7 @@ export function buildStaticBriefHtml(
         </tbody>
     </table>
 
-    <h2>7. Dataset Provenance &amp; SHA256 Checksums</h2>
+    <h2>${sec++}. Dataset Provenance &amp; SHA256 Checksums</h2>
     <table>
         <thead>
             <tr>
@@ -676,9 +902,10 @@ export function exportFilteredGeoJson(
     filtered: FilteredEvidenceResult,
     manifest: EvidenceManifest,
     filterState: ExportWindowMeta,
-    syntheticSources: DatasetSource[] = []
+    syntheticSources: DatasetSource[] = [],
+    assessment?: LocationAssessment | null
 ): void {
-    const jsonStr = buildExportGeoJson(filtered, manifest, filterState, syntheticSources);
+    const jsonStr = buildExportGeoJson(filtered, manifest, filterState, syntheticSources, assessment);
     const blob = new Blob([jsonStr], { type: 'application/geo+json;charset=utf-8' });
     triggerDownload(blob, `prb-remington-evidence-${filterState.startDate}_to_${filterState.endDate}.geojson`);
 }
@@ -698,6 +925,19 @@ export function exportFilteredCsv(
 }
 
 /**
+ * Triggers a browser download of a location assessment as RFC 4180 CSV.
+ */
+export function exportAssessmentCsv(
+    assessment: LocationAssessment,
+    filterState: ExportWindowMeta
+): void {
+    const csvContent = buildAssessmentCsv(assessment);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const coordStr = `${assessment.coordinate[0].toFixed(4)}_${assessment.coordinate[1].toFixed(4)}`;
+    triggerDownload(blob, `prb-assessment-${coordStr}-${filterState.startDate}_to_${filterState.endDate}.csv`);
+}
+
+/**
  * Opens a clean, printable Scientific Evidence Brief in a new browser tab/window,
  * or falls back to downloading the HTML brief if popups are blocked.
  */
@@ -705,7 +945,8 @@ export function openPrintableEvidenceBrief(
     filtered: FilteredEvidenceResult,
     manifest: EvidenceManifest,
     filterState: ExportWindowMeta,
-    mapCanvas?: HTMLCanvasElement | null
+    mapCanvas?: HTMLCanvasElement | null,
+    assessment?: LocationAssessment | null
 ): void {
     let mapSnapshotDataUrl = '';
     let captureErrorMessage = '';
@@ -729,7 +970,8 @@ export function openPrintableEvidenceBrief(
         manifest,
         filterState,
         mapSnapshotDataUrl,
-        captureErrorMessage
+        captureErrorMessage,
+        assessment
     );
 
     const win = window.open('', '_blank');

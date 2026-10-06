@@ -856,6 +856,421 @@ body {
     font-family: var(--font-mono);
 }
 
+/* === SPATIOTEMPORAL EVIDENCE INSPECTOR & COORDINATE ENTRY === */
+
+.coordinate-inspect-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.coordinate-inspect-card h4 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.coord-hint {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.coord-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.coord-inputs {
+    display: flex;
+    gap: 8px;
+}
+
+.coord-input-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.coord-input-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.coord-input-group input {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    width: 100%;
+}
+
+.coord-input-group input:focus {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 1px;
+    border-color: transparent;
+}
+
+.coord-form-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.coord-form-error {
+    font-size: 11px;
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    display: none;
+    line-height: 1.35;
+}
+
+[data-theme="dark"] .coord-form-error {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fca5a5;
+}
+
+/* Location Assessment Panel */
+.location-assessment {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.assessment-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 8px;
+}
+
+.assessment-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.assessment-origin-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+.badge-unresolved {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .badge-unresolved {
+    background: #1e293b;
+    color: #cbd5e1;
+    border-color: #475569;
+}
+
+.synth-warning {
+    background: #fef3c7;
+    border: 1px solid #d97706;
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    line-height: 1.4;
+}
+
+[data-theme="dark"] .synth-warning {
+    background: #451a03;
+    border-color: #b45309;
+    color: #fde68a;
+}
+
+.assessment-coords {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: var(--bg-secondary);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.assessment-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.assessment-section h5 {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+}
+
+.assessment-rel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.assessment-rel-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rel-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.rel-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.badge-rel {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.badge-rel.inside {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #f87171;
+}
+
+.badge-rel.outside {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.badge-rel.boundary {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+[data-theme="dark"] .badge-rel.inside {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #991b1b;
+}
+
+[data-theme="dark"] .badge-rel.outside {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0284c7;
+}
+
+[data-theme="dark"] .badge-rel.boundary {
+    background: #451a03;
+    color: #fde68a;
+    border-color: #b45309;
+}
+
+.rel-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.rel-detail {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.pathway-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pathway-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+
+.pathway-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.badge-pathway {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+}
+
+.pathway-detail {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.pathway-detail-list {
+    margin: 4px 0 0 16px;
+    padding: 0;
+    font-size: 10.5px;
+    color: var(--text-muted);
+}
+
+.pathway-detail-list li {
+    margin-bottom: 2px;
+}
+
+.caveat-list {
+    margin: 4px 0 0 16px;
+    padding: 0;
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.caveat-item {
+    line-height: 1.35;
+}
+
+.assessment-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.btn-action {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    text-align: center;
+}
+
+.btn-action:hover {
+    background: var(--bg-hover);
+}
+
+.btn-action.primary {
+    background: var(--accent-primary);
+    color: #ffffff;
+    border-color: transparent;
+}
+
+.btn-action.primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-action.secondary {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+
+/* Static Map Query Target Marker */
+.assessment-target-marker {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #0284c7;
+    border-radius: 50%;
+    position: relative;
+    pointer-events: none;
+    box-sizing: border-box;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 2px 4px rgba(0, 0, 0, 0.25);
+    background: rgba(2, 132, 199, 0.15);
+}
+
+.assessment-target-marker::before,
+.assessment-target-marker::after {
+    content: '';
+    position: absolute;
+    background: #0284c7;
+}
+
+.assessment-target-marker::before {
+    top: 50%;
+    left: -4px;
+    right: -4px;
+    height: 1.5px;
+    transform: translateY(-50%);
+}
+
+.assessment-target-marker::after {
+    left: 50%;
+    top: -4px;
+    bottom: -4px;
+    width: 1.5px;
+    transform: translateX(-50%);
+}
+
+[data-theme="dark"] .assessment-target-marker {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), 0 2px 4px rgba(0, 0, 0, 0.5);
+    background: rgba(56, 189, 248, 0.2);
+}
+
+[data-theme="dark"] .assessment-target-marker::before,
+[data-theme="dark"] .assessment-target-marker::after {
+    background: #38bdf8;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
     * {

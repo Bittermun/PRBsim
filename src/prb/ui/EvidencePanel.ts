@@ -16,6 +16,7 @@ import type {
     SurveyCoverageRecord
 } from '../data/types.ts';
 import type { FilteredEvidenceResult } from '../data/select.ts';
+import type { LocationAssessment } from '../data/assessment.ts';
 
 export function escapeHtml(str: string): string {
     return String(str || '')
@@ -53,12 +54,146 @@ export function formatFireCauseRecord(perim: WildfirePerimeterRecord): string {
     return `${general}${specific}${inv}`;
 }
 
+/**
+ * Pure HTML renderer for LocationAssessment data structure.
+ */
+export function renderLocationAssessmentHtml(assessment: LocationAssessment): string {
+    const latStr = assessment.coordinate[1].toFixed(5);
+    const lonStr = assessment.coordinate[0].toFixed(5);
+    const coordDisplay = `${latStr}°N, ${lonStr}°W`;
+    const originLabel = assessment.queryOrigin === 'user_selected_coordinate'
+        ? 'User-Selected Query Coordinate'
+        : 'Point Observation Record';
+
+    const synthBadge = assessment.syntheticInfluence
+        ? `<div class="callout-box warning" style="margin-bottom:12px;"><strong>⚠ SYNTHETIC INFLUENCE:</strong> This assessment incorporates quarantined test fixtures or schematic geological polygons. Results must not be cited as empirical evidence.</div>`
+        : '';
+
+    const relRows = assessment.relationships.map(r => {
+        const roundedDist = Math.round(r.approximateBoundaryDistanceMeters / 10) * 10;
+        const distStr = `${roundedDist.toLocaleString()} m (approximate)`;
+        const timeStr = r.daysFromIncidentDiscovery !== null
+            ? `${r.daysFromIncidentDiscovery >= 0 ? '+' : ''}${r.daysFromIncidentDiscovery} days from incident discovery`
+            : 'Not evaluated / unavailable';
+
+        const statusClass = r.nominalRelation === 'inside'
+            ? 'status-confirmed'
+            : r.nominalRelation === 'boundary'
+              ? 'status-sensor'
+              : 'status-unverified';
+
+        return `
+            <div class="assessment-rel-item">
+                <div class="property-row">
+                    <span class="prop-label">Wildfire Perimeter</span>
+                    <span class="prop-val"><code>${escapeHtml(r.perimeterId)}</code></span>
+                </div>
+                <div class="property-row">
+                    <span class="prop-label">Nominal Relation</span>
+                    <span class="prop-val status-badge ${statusClass}">
+                        ${escapeHtml(r.nominalRelation.toUpperCase())}
+                    </span>
+                </div>
+                <div class="property-row">
+                    <span class="prop-label">Boundary Distance</span>
+                    <span class="prop-val">${escapeHtml(distStr)}</span>
+                </div>
+                <div class="property-row">
+                    <span class="prop-label">Coordinate Uncertainty</span>
+                    <span class="prop-val"><code>${escapeHtml(r.coordinateUncertainty)}</code></span>
+                </div>
+                <div class="property-row">
+                    <span class="prop-label">Temporal Offset</span>
+                    <span class="prop-val">${escapeHtml(timeStr)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const caveatsHtml = assessment.caveats.map(c => `<li>${escapeHtml(c)}</li>`).join('');
+
+    const pathwaysHtml = assessment.pathways.map(p => `
+        <div class="pathway-card">
+            <h4>${escapeHtml(p.question)}</h4>
+            <div class="pathway-status">
+                <span class="status-badge status-unverified">STATUS: ${escapeHtml(p.evidenceStatus.toUpperCase())}</span>
+            </div>
+            <div class="pathway-details">
+                <div class="pathway-col">
+                    <strong>Evidence Required:</strong>
+                    <ul>${p.requiredEvidence.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
+                </div>
+                <div class="pathway-col missing">
+                    <strong>Missing in Active View:</strong>
+                    <ul>${p.missingEvidenceInActiveView.map(m => `<li>${escapeHtml(m)}</li>`).join('')}</ul>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    const geologyDisplay = assessment.geologicalRecordIds.length > 0
+        ? assessment.geologicalRecordIds.map(id => `<code>${escapeHtml(id)}</code>`).join(', ')
+        : 'None in active view';
+
+    const surveyDisplay = assessment.surveyRecordIds.length > 0
+        ? assessment.surveyRecordIds.map(id => `<code>${escapeHtml(id)}</code>`).join(', ')
+        : 'None in active view';
+
+    return `
+        <div class="assessment-container">
+            ${synthBadge}
+            <div class="assessment-header">
+                <span class="badge badge-assessment">SPATIOTEMPORAL EVIDENCE INSPECTOR</span>
+                <h3>${escapeHtml(originLabel)}</h3>
+                <div class="assessment-coords"><code>${escapeHtml(coordDisplay)}</code></div>
+            </div>
+
+            <div class="assessment-section">
+                <h4>Perimeter Spatial & Temporal Relationships</h4>
+                ${relRows || '<p class="text-muted">No perimeters in active filtered view.</p>'}
+            </div>
+
+            <div class="assessment-section">
+                <h4>Context Overlap</h4>
+                <div class="property-row">
+                    <span class="prop-label">Geological Units</span>
+                    <span class="prop-val">${geologyDisplay}</span>
+                </div>
+                <div class="property-row">
+                    <span class="prop-label">Thermal Surveys</span>
+                    <span class="prop-val">${surveyDisplay}</span>
+                </div>
+            </div>
+
+            <div class="assessment-section">
+                <h4>Research Pathways & Evidence Gaps</h4>
+                ${pathwaysHtml}
+            </div>
+
+            <div class="assessment-section caveats-section">
+                <h4>Methodological Caveats & Data Limitations</h4>
+                <ul class="caveats-list">${caveatsHtml}</ul>
+            </div>
+
+            <div class="assessment-actions">
+                <button type="button" id="btn-download-assessment-csv" class="btn btn-secondary btn-sm">
+                    📥 Download Assessment CSV
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 export class EvidencePanel {
     private container: HTMLElement;
     private dataset: PRBEvidenceDataset;
     private currentTab: 'inspector' | 'records' | 'gaps' | 'manifest' = 'inspector';
     private onFeatureSelectCallback: ((featureId: string, coords?: [number, number]) => void) | null = null;
+    private onCoordinateInspectCallback: ((coord: [number, number]) => void) | null = null;
+    private onClearAssessmentCallback: (() => void) | null = null;
+    private onDownloadAssessmentCsvCallback: ((assessment: LocationAssessment) => void) | null = null;
     private selectedRecordId: string | null = null;
+    private currentAssessment: LocationAssessment | null = null;
 
     constructor(containerId: string, dataset: PRBEvidenceDataset) {
         const el = document.getElementById(containerId);
@@ -72,8 +207,144 @@ export class EvidencePanel {
         this.onFeatureSelectCallback = cb;
     }
 
+    public setOnCoordinateInspect(cb: (coord: [number, number]) => void): void {
+        this.onCoordinateInspectCallback = cb;
+    }
+
+    public setOnClearAssessment(cb: () => void): void {
+        this.onClearAssessmentCallback = cb;
+    }
+
+    public setOnDownloadAssessmentCsv(cb: (assessment: LocationAssessment) => void): void {
+        this.onDownloadAssessmentCsvCallback = cb;
+    }
+
     public getCurrentTab(): 'inspector' | 'records' | 'gaps' | 'manifest' {
         return this.currentTab;
+    }
+
+    public clearAssessment(): void {
+        this.showLocationAssessment(null);
+    }
+
+    public showLocationAssessment(assessment: LocationAssessment | null): void {
+        this.currentAssessment = assessment;
+        const pane = this.container.querySelector('#tab-inspector') as HTMLElement | null;
+        if (!pane) return;
+
+        if (!assessment) {
+            if (!this.selectedRecordId) {
+                this.clearInspectorSelection();
+            } else {
+                const existingAssessment = pane.querySelector('.assessment-container');
+                if (existingAssessment) existingAssessment.remove();
+            }
+            return;
+        }
+
+        this.switchTab('inspector');
+        if (assessment.queryOrigin === 'user_selected_coordinate') {
+            this.selectedRecordId = null;
+            pane.innerHTML = `
+                ${this.renderCoordinateFormHtml()}
+                ${renderLocationAssessmentHtml(assessment)}
+            `;
+            this.bindInspectorActions(pane);
+        } else if (assessment.queryOrigin === 'observation_record') {
+            const card = pane.querySelector('.feature-detail-card');
+            if (!card) {
+                const obsId = (assessment.selection as { observationId: string }).observationId;
+                const obs = this.dataset.observations.find(o => o.id === obsId);
+                if (obs) {
+                    this.selectFeature('observation', obs);
+                }
+            }
+            const existingAssessment = pane.querySelector('.assessment-container');
+            if (existingAssessment) existingAssessment.remove();
+            pane.insertAdjacentHTML('beforeend', renderLocationAssessmentHtml(assessment));
+            this.bindInspectorActions(pane);
+        }
+    }
+
+    private renderCoordinateFormHtml(): string {
+        const defaultLat = this.currentAssessment ? this.currentAssessment.coordinate[1].toFixed(5) : '';
+        const defaultLon = this.currentAssessment ? this.currentAssessment.coordinate[0].toFixed(5) : '';
+        const hasSelection = this.selectedRecordId !== null || this.currentAssessment !== null;
+
+        return `
+            <div class="coordinate-inspect-card">
+                <div class="coord-form-header">
+                    <span class="badge badge-coord">COORDINATE INSPECTION</span>
+                    <h4>Inspect Query Coordinates</h4>
+                </div>
+                <form id="coord-inspect-form" class="coord-form" autocomplete="off">
+                    <div class="coord-inputs-row">
+                        <div class="coord-input-group">
+                            <label for="input-lat">Latitude (°N)</label>
+                            <input id="input-lat" type="number" step="any" min="-90" max="90" placeholder="e.g. 45.10000" value="${escapeHtml(defaultLat)}" required />
+                        </div>
+                        <div class="coord-input-group">
+                            <label for="input-lon">Longitude (°W)</label>
+                            <input id="input-lon" type="number" step="any" min="-180" max="180" placeholder="e.g. -106.45000" value="${escapeHtml(defaultLon)}" required />
+                        </div>
+                    </div>
+                    <div id="coord-form-error" class="coord-form-error" style="display:none;"></div>
+                    <div class="coord-actions-row">
+                        <button type="submit" class="btn btn-primary btn-sm">Inspect Coordinates</button>
+                        ${hasSelection ? `<button type="button" id="btn-clear-inspect" class="btn btn-secondary btn-sm">Clear Selection</button>` : ''}
+                    </div>
+                </form>
+            </div>
+        `;
+    }
+
+    private bindInspectorActions(pane: HTMLElement): void {
+        const form = pane.querySelector('#coord-inspect-form') as HTMLFormElement | null;
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const latInput = pane.querySelector('#input-lat') as HTMLInputElement | null;
+                const lonInput = pane.querySelector('#input-lon') as HTMLInputElement | null;
+                const errBox = pane.querySelector('#coord-form-error') as HTMLElement | null;
+                if (!latInput || !lonInput) return;
+
+                const lat = parseFloat(latInput.value);
+                const lon = parseFloat(lonInput.value);
+
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                    if (errBox) {
+                        errBox.textContent = 'Please enter valid numeric coordinates.';
+                        errBox.style.display = 'block';
+                    }
+                    return;
+                }
+                if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                    if (errBox) {
+                        errBox.textContent = 'Latitude must be between -90 and 90, Longitude between -180 and 180.';
+                        errBox.style.display = 'block';
+                    }
+                    return;
+                }
+                if (errBox) errBox.style.display = 'none';
+                this.onCoordinateInspectCallback?.([lon, lat]);
+            });
+        }
+
+        const clearBtn = pane.querySelector('#btn-clear-inspect') as HTMLButtonElement | null;
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                this.onClearAssessmentCallback?.();
+            });
+        }
+
+        const downloadCsvBtn = pane.querySelector('#btn-download-assessment-csv') as HTMLButtonElement | null;
+        if (downloadCsvBtn) {
+            downloadCsvBtn.addEventListener('click', () => {
+                if (this.currentAssessment) {
+                    this.onDownloadAssessmentCsvCallback?.(this.currentAssessment);
+                }
+            });
+        }
     }
 
     private renderShell(): void {
@@ -104,25 +375,33 @@ export class EvidencePanel {
             });
         });
 
+        const inspectorPane = this.container.querySelector('#tab-inspector') as HTMLElement;
+        if (inspectorPane) {
+            this.bindInspectorActions(inspectorPane);
+        }
+
         this.renderDataGaps();
         this.renderManifest();
     }
 
     private renderEmptyInspectorHtml(): string {
         return `
+            ${this.renderCoordinateFormHtml()}
             <div class="empty-state">
                 <div class="empty-icon">🔍</div>
-                <h3>Select a Map Feature</h3>
-                <p>Click the Remington Wildfire perimeter (retrospective final footprint, polygon date 2025-01-15) or enable Synthetic Validation Fixtures to inspect multi-vent coal seam test cases, negative thermal surveys, and schematic stratigraphy.</p>
+                <h3>Select a Map Feature or Enter Coordinates</h3>
+                <p>Click the Remington Wildfire perimeter or enter coordinates above to inspect spatial containment, boundary distances, and temporal relationships. Click any active feature or table row to inspect evidence attributes.</p>
             </div>
         `;
     }
 
     public clearInspectorSelection(): void {
         this.selectedRecordId = null;
+        this.currentAssessment = null;
         const pane = this.container.querySelector('#tab-inspector') as HTMLElement | null;
         if (pane) {
             pane.innerHTML = this.renderEmptyInspectorHtml();
+            this.bindInspectorActions(pane);
         }
     }
 
@@ -154,6 +433,20 @@ export class EvidencePanel {
                 this.clearInspectorSelection();
             }
         }
+
+        // Reconcile assessment: clear if selected observation was hidden or synthetic influence removed
+        if (this.currentAssessment) {
+            if (this.currentAssessment.selection.kind === 'observation') {
+                const obsId = this.currentAssessment.selection.observationId;
+                const stillVisible = filtered.observations.some(o => o.id === obsId);
+                if (!stillVisible) {
+                    this.clearInspectorSelection();
+                }
+            } else if (this.currentAssessment.syntheticInfluence && filtered.activeSyntheticCount === 0) {
+                this.clearInspectorSelection();
+            }
+        }
+
         this.renderRecordsTable(filtered);
     }
 
@@ -418,6 +711,12 @@ export class EvidencePanel {
                 </div>
             `;
         }
+
+        if (this.currentAssessment && type === 'observation' && props.id === (this.currentAssessment.selection as { observationId: string }).observationId) {
+            pane.insertAdjacentHTML('beforeend', renderLocationAssessmentHtml(this.currentAssessment));
+        }
+        pane.insertAdjacentHTML('afterbegin', this.renderCoordinateFormHtml());
+        this.bindInspectorActions(pane);
     }
 
     private renderRecordsTable(filtered: FilteredEvidenceResult): void {

@@ -20,3 +20,22 @@ To maintain scientific integrity, the **PRB Coal-Fire Evidence Explorer** docume
 In default real mode (`includeSynthetic: false`), the map displays **only** the verified 2024 Remington Wildfire final perimeter (`196,368.1 acres`, WFIGS polygon timestamp `2025-01-15`). It does **not** plot synthetic vents, schematic geology bounding boxes, or approximate pins derived from news articles.
 
 Researchers can inspect the **Data Gaps & Matrix** tab for the non-spatial **Remington Case Study Evidence & Chronology Matrix**, or toggle **Synthetic Validation Fixtures** on the timeline bar to test multi-vent grouping, interval filtering, and bounded negative survey rendering.
+
+---
+
+## 3. Epistemic Limitations of the Spatiotemporal Evidence Inspector
+
+1. **Footprint Containment vs. Fire Arrival & Severity**:
+   - Location inside the Remington final perimeter polygon indicates only that the point falls within the outer mapped perimeter boundary (`mapDate: 2025-01-15`).
+   - It does **not** prove local vegetation actually burned, heat penetrated to coal-seam depth, or high residence time occurred.
+   - Geodesic distance to the perimeter boundary is a spatial metric; it must not be interpreted as physical convective ember transport or conductive thermal flux.
+
+2. **Incident Discovery Date vs. Local Flame Arrival**:
+   - The temporal metric `daysFromIncidentDiscovery` measures time relative to initial incident discovery (`2024-08-22`).
+   - Local fire arrival dates vary significantly across a ~196,000-acre footprint over multiple weeks, and local arrival date remains unavailable in the bundled empirical dataset.
+
+3. **Causal Direction Unresolved**:
+   - First post-fire detection of a coal-fire vent cannot be equated with wildfire-induced ignition without a verified pre-fire thermal baseline.
+   - Similarly, proximity of a vent to the fire perimeter cannot prove the vent ignited the wildfire without fuel continuity and ignition sequence evidence.
+   - The causal attribution outcome remains strictly **unresolved** across all locations.
+

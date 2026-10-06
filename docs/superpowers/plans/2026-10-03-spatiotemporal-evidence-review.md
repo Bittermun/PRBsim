@@ -312,3 +312,63 @@ Planning estimate: **4–7 focused developer days** for the corrected v1, includ
 - Local repository statements above are checks of acquired files and code, not a fresh audit of all currently available agency datasets. “Not acquired here” must not be rewritten as “does not exist.”
 
 Self-review: design requirements map to tasks 1–6; types/signatures are consistent; five review-focus cases have assigned tests; no product code or data bytes changed for this planning request.
+
+## 9. Simplification research addendum (2026-10-06)
+
+**Recommendation update:** Prefer narrowly imported Turf geometry functions and a small native selection reducer. Use a MapLibre DOM Marker for the live query target if the printable brief may show its coordinate separately. These are proposed changes to the plan, not installed dependencies or an implemented feature. This section supersedes the custom-projection/no-new-dependency and target-layer prescriptions above if this revised approach is selected.
+
+### Findings from Context7, Firecrawl, Exa, and upstream documentation
+
+| Concern | Better approach | Remaining obligation |
+| --- | --- | --- |
+| Writing and maintaining point-in-polygon, hole handling, multipolygon iteration, and distance projection | Turf `booleanPointInPolygon` and `pointToPolygonDistance` behind the existing small geometry adapter | Input validation, units, exact boundary semantics, representative contract tests, version pinning and bundle check |
+| Query target disappearing on `setStyle` | One DOM `maplibregl.Marker`, positioned with `setLngLat`, removed on clear | Verify repeated style changes and filters; DOM marker is absent from WebGL canvas snapshot |
+| Stale result after filter/mode change | Store selection and filters as authoritative state; compute one snapshot for UI/export from those inputs | Hidden-record reconciliation and explicit export quarantine validation |
+| UI and export implementation expands the first release | Deliver inspector first; add assessment exports as a second slice | Existing evidence downloads remain unchanged; clearly disclose that first slice does not export query analysis |
+| Missing empirical inventory | Primary-source leads from Montana DEQ and Custer County GIS | Public/downloadable inventory and detection metadata have not been verified; do not render inferred pins |
+
+### Geometry: an existing function removes most custom math
+
+Context7 surfaced `@turf/point-to-polygon-distance`, an even simpler option than manually converting polygons to lines. Official [Turf documentation](https://turfjs.org/docs/api/pointToPolygonDistance) describes signed distance to polygon edges with holes and multipolygons and explicit geodesic/planar options. The [7.4.0 source](https://raw.githubusercontent.com/Turfjs/turf/v7.4.0/packages/turf-point-to-polygon-distance/index.ts) implements ring/part handling. The npm registry confirmed version 7.4.0 exists during this research.
+
+Recommended adapter choices:
+
+- Import `pointToPolygonDistance` from `@turf/point-to-polygon-distance`, using `{ units: 'meters', method: 'geodesic' }` explicitly. Its default units are kilometers in the inspected source; never rely on the prose return-unit label.
+- Use `Math.abs` of that result for unsigned boundary distance. Retain a separate containment result rather than interpreting distance sign as a causal/spatial risk classification.
+- Import `booleanPointInPolygon` directly from its package. It handles polygon holes, multipolygons, and `ignoreBoundary` in the [official API](https://turfjs.org/docs/api/booleanPointInPolygon).
+- Exact boundary classification can compare boundary-inclusive and boundary-exclusive containment results; if the UI retains a near-boundary numerical tolerance, specify that separately. Preserve observation accuracy overlap independently.
+- Pin both direct packages to the same verified release; commit the lockfile. Inspect actual production bundle impact before accepting them. Do not install the full Turf bundle for two functions.
+- Turf's geodesic method does not convert source geometry into survey truth or guarantee ellipsoidal survey precision. Keep “approximate,” null accuracy, and source limitations. Check representative reference distances and ring cases; remove the bespoke equirectangular implementation and its artificial regional metric envelope.
+
+This changes Task 1 from a geometry-algorithm project into a small adapter and contract-test task. It does not remove project-specific validation or evidence interpretation work.
+
+### Map target: a useful simplification with a report trade-off
+
+The installed MapLibre is **4.7.1**. Context7 primarily exposed newer documentation, so the existing local 4.7.1 source was also checked: `Marker.addTo` attaches a DOM element to the map canvas container and subscribes to map movement/terrain events; style replacement operates on the style object rather than that DOM element. This supports retaining one marker across basemap changes; it still requires a browser regression check. Basic marker methods are documented in the [MapLibre API](https://maplibre.org/maplibre-gl-js/docs/API/classes/Marker/).
+
+Replace Task 3's assessment source/layer mounting with one marker owned by `main.ts`, and retain the existing single hit-priority click handler. Use a non-interactive, labeled static target, with no popup, dragging, or pulses.
+
+**Important export choice:** `mapCanvas.toDataURL` does not include DOM markers. For the simplest release, the printable brief lists the query coordinate in text and says the live target is absent from the map snapshot. If a target must appear in the exported image, retain a style layer or explicitly composite the target during export; that restores some implementation work. Do not silently label the canvas image as containing the live marker.
+
+### State: borrow the pattern without adopting a framework
+
+Context7's [XState Store documentation](https://stately.ai/docs/xstate-store) demonstrates selector-derived values in vanilla TypeScript. A full state-machine framework is unnecessary for this synchronous feature. Use a small pure reducer with `select-coordinate`, `select-observation`, `change-filter`, and `clear-selection` events. Reconcile the selection and derive assessment in one function; use the resulting snapshot for UI and exports. Cache only if measurement later shows a performance need.
+
+This reduces opportunities for independent inspector, marker, and export state to disagree. It does not make bad inputs or quarantine violations impossible; keep focused reducer/export tests.
+
+### Primary-data leads found, not acquired
+
+Exa reviewed 10 ranked results across two targeted searches. The most useful primary leads were:
+
+- [Montana DEQ Burning Coal Seam Coordination](https://aml-mtdeq.hub.arcgis.com/pages/burning-coal-seam-coordination): an agency-associated portal; the accessible fetch exposed only its title, not an inventory or service schema.
+- [Custer County GIS](https://custercountymt.gov/services/geographic-information-system/): the official page explicitly says the county can show coal seam locations and potential fire risks. This establishes a data-holder lead, not an active-combustion inventory, Remington coverage, or a validated pre/post-fire baseline.
+
+No audited downloadable vent inventory was confirmed by this bounded search. Follow these leads through read-only service inspection and primary metadata before deciding whether the existing “not acquired” notices can change. Do not use news attribution as verified causal labeling. No contacts were messaged.
+
+### Revised delivery estimate and recommended sequence
+
+- **Inspector-only first slice:** approximately **1–2 focused developer days** with Turf adapters, static DOM target, coordinate input, filter reconciliation, explicit missing evidence, and build/test/browser verification.
+- **Full revised inspector plus assessment exports:** approximately **2–4 focused developer days**, allowing for provenance, quarantine tests, report behavior, and bundle/version checks. Custom map-snapshot compositing or newly acquired data may increase this.
+- These are judgment estimates, not demonstrated performance or promised elapsed time. The earlier 4–7-day range assumed more custom geometry/layer lifecycle work.
+
+Proceed with a short implementation proof of the pinned Turf adapter and marker behavior before expanding exports. The software concerns become substantially more routine. Missing baseline/progression/ignition evidence and causal probabilities remain research problems; no plugin resolves them automatically.

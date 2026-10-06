@@ -16,7 +16,17 @@ import { initEvidenceLayers, updateEvidenceLayers, setLayerGroupVisibility } fro
 import { TimelineControl } from './ui/TimelineControl.ts';
 import { EvidencePanel, escapeHtml } from './ui/EvidencePanel.ts';
 import { MapLegend } from './ui/Legend.ts';
-import { exportFilteredGeoJson, exportFilteredCsv, openPrintableEvidenceBrief } from './ui/ExportDialog.ts';
+import {
+    exportFilteredGeoJson,
+    exportFilteredCsv,
+    exportAssessmentCsv,
+    openPrintableEvidenceBrief
+} from './ui/ExportDialog.ts';
+import {
+    assessLocation,
+    type AssessmentSelection,
+    type LocationAssessment
+} from './data/assessment.ts';
 
 // Remington Wildfire & Southern Montana / Northern Wyoming PRB Center
 const REMINGTON_CENTER: [number, number] = [-106.08, 45.01];
@@ -89,11 +99,84 @@ async function bootstrapPRBExplorer() {
         modeBadge.className = 'status-badge status-field_confirmed';
     }
 
+    // Selection & Assessment State
+    let activeSelection: AssessmentSelection | null = null;
+    let currentAssessment: LocationAssessment | null = null;
+    let targetMarker: maplibregl.Marker | null = null;
+
+    function updateAssessment(selection: AssessmentSelection | null, panTo = false) {
+        activeSelection = selection;
+        if (!selection) {
+            currentAssessment = null;
+            evidencePanel.clearAssessment();
+            if (targetMarker) {
+                targetMarker.remove();
+                targetMarker = null;
+            }
+            return;
+        }
+
+        currentAssessment = assessLocation(
+            selection,
+            currentFilteredData,
+            dataset.manifest,
+            filterState,
+            dataset.syntheticSources
+        );
+        if (!currentAssessment) {
+            evidencePanel.clearAssessment();
+            if (targetMarker) {
+                targetMarker.remove();
+                targetMarker = null;
+            }
+            return;
+        }
+
+        evidencePanel.showLocationAssessment(currentAssessment);
+
+        const targetCoords: [number, number] =
+            selection.kind === 'coordinate'
+                ? selection.coordinate
+                : currentAssessment.coordinate;
+
+        if (!targetMarker) {
+            const el = document.createElement('div');
+            el.className = 'assessment-target-marker';
+            el.setAttribute('aria-hidden', 'true');
+            targetMarker = new maplibregl.Marker({ element: el }).setLngLat(targetCoords).addTo(map);
+        } else {
+            targetMarker.setLngLat(targetCoords);
+        }
+
+        if (panTo) {
+            map.flyTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 11.5), duration: 600 });
+        }
+    }
+
     // Pan/zoom to feature when selected from the accessible records table
-    evidencePanel.setOnFeatureSelect((_id, coords) => {
+    evidencePanel.setOnFeatureSelect((id, coords) => {
         if (coords) {
             map.flyTo({ center: coords, zoom: 12.5, duration: 900 });
         }
+        const obs = currentFilteredData.observations.find(o => o.id === id);
+        if (obs && obs.geometry.type === 'Point') {
+            updateAssessment({ kind: 'observation', observationId: id }, false);
+        } else {
+            updateAssessment(null, false);
+        }
+    });
+
+    // Wire coordinate form inspection, clearing, and CSV download
+    evidencePanel.setOnCoordinateInspect(coords => {
+        updateAssessment({ kind: 'coordinate', coordinate: coords }, true);
+    });
+
+    evidencePanel.setOnClearAssessment(() => {
+        updateAssessment(null, false);
+    });
+
+    evidencePanel.setOnDownloadAssessmentCsv(assessment => {
+        exportAssessmentCsv(assessment, filterState);
     });
 
     // 5. Render Map Layers once style is loaded (handling case where map loaded before fetch completed)
@@ -106,9 +189,24 @@ async function bootstrapPRBExplorer() {
     };
 
     const mountEvidenceLayers = () => {
-        initEvidenceLayers(map, currentFilteredData, (type, props) => {
-            evidencePanel.selectFeature(type, props);
-        });
+        initEvidenceLayers(
+            map,
+            currentFilteredData,
+            (type, props, _coords) => {
+                evidencePanel.selectFeature(type, props);
+                if (type === 'observation' && props?.id) {
+                    const obs = currentFilteredData.observations.find(o => o.id === props.id);
+                    if (obs && obs.geometry.type === 'Point') {
+                        updateAssessment({ kind: 'observation', observationId: String(props.id) }, false);
+                        return;
+                    }
+                }
+                updateAssessment(null, false);
+            },
+            (emptyCoords: [number, number]) => {
+                updateAssessment({ kind: 'coordinate', coordinate: emptyCoords }, false);
+            }
+        );
         applyLegendVisibility();
     };
 
@@ -127,6 +225,23 @@ async function bootstrapPRBExplorer() {
         currentFilteredData = filterEvidence(dataset, filterState);
         updateEvidenceLayers(map, currentFilteredData);
         evidencePanel.updateFilteredData(currentFilteredData);
+
+        // Reconcile assessment against newly filtered data
+        if (activeSelection) {
+            const currentSel = activeSelection;
+            if (currentSel.kind === 'observation') {
+                const obsStillVisible = currentFilteredData.observations.some(
+                    o => o.id === currentSel.observationId
+                );
+                if (!obsStillVisible) {
+                    updateAssessment(null, false);
+                } else {
+                    updateAssessment(currentSel, false);
+                }
+            } else if (currentSel.kind === 'coordinate') {
+                updateAssessment(currentSel, false);
+            }
+        }
 
         if (modeBadge) {
             if (evt.includeSynthetic) {
@@ -190,7 +305,8 @@ async function bootstrapPRBExplorer() {
             currentFilteredData,
             dataset.manifest,
             filterState,
-            dataset.syntheticSources
+            dataset.syntheticSources,
+            currentAssessment
         );
     });
 
@@ -204,7 +320,13 @@ async function bootstrapPRBExplorer() {
     });
 
     btnBrief?.addEventListener('click', () => {
-        openPrintableEvidenceBrief(currentFilteredData, dataset.manifest, filterState, map.getCanvas());
+        openPrintableEvidenceBrief(
+            currentFilteredData,
+            dataset.manifest,
+            filterState,
+            map.getCanvas(),
+            currentAssessment
+        );
     });
 
     btnTheme?.addEventListener('click', () => {

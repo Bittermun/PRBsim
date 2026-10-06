@@ -161,7 +161,12 @@ export function buildLayerGeoJsons(filtered: FilteredEvidenceResult) {
 export function initEvidenceLayers(
     map: maplibregl.Map,
     filtered: FilteredEvidenceResult,
-    onFeatureClick: (featureType: 'observation' | 'perimeter' | 'geology' | 'survey', props: Record<string, any>) => void
+    onFeatureClick: (
+        featureType: 'observation' | 'perimeter' | 'geology' | 'survey',
+        props: Record<string, any>,
+        coords?: [number, number]
+    ) => void,
+    onEmptyMapClick?: (coords: [number, number]) => void
 ): void {
     const { geologyFc, perimetersFc, surveysFc, sitesFc, observationsFc } = buildLayerGeoJsons(filtered);
 
@@ -439,27 +444,36 @@ export function initEvidenceLayers(
     }
 
     const clickHandler = (e: maplibregl.MapMouseEvent) => {
+        const coords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
         const activeLayers = priorityLayers.filter(id => Boolean(map.getLayer(id)));
-        if (activeLayers.length === 0) return;
+        if (activeLayers.length === 0) {
+            onEmptyMapClick?.(coords);
+            return;
+        }
         const hits = map.queryRenderedFeatures(e.point, { layers: activeLayers });
-        if (!hits || hits.length === 0) return;
+        if (!hits || hits.length === 0) {
+            onEmptyMapClick?.(coords);
+            return;
+        }
 
         // Pick the highest-priority layer match
         for (const layerId of activeLayers) {
             const match = hits.find(f => f.layer.id === layerId);
             if (match && match.properties) {
                 if (layerId === LAYER_IDS.observationsPoint || layerId === LAYER_IDS.observationsPolygonFill) {
-                    onFeatureClick('observation', match.properties);
+                    onFeatureClick('observation', match.properties, coords);
                 } else if (layerId === LAYER_IDS.surveysFill) {
-                    onFeatureClick('survey', match.properties);
+                    onFeatureClick('survey', match.properties, coords);
                 } else if (layerId === LAYER_IDS.perimetersFill) {
-                    onFeatureClick('perimeter', match.properties);
+                    onFeatureClick('perimeter', match.properties, coords);
                 } else if (layerId === LAYER_IDS.geologyFill) {
-                    onFeatureClick('geology', match.properties);
+                    onFeatureClick('geology', match.properties, coords);
                 }
                 return;
             }
         }
+
+        onEmptyMapClick?.(coords);
     };
 
     boundMapClickHandlers.set(map, clickHandler);
