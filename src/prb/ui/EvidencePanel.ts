@@ -300,7 +300,8 @@ export class EvidencePanel {
 
     private bindInspectorActions(pane: HTMLElement): void {
         const form = pane.querySelector('#coord-inspect-form') as HTMLFormElement | null;
-        if (form) {
+        if (form && !form.dataset.bound) {
+            form.dataset.bound = 'true';
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const latInput = pane.querySelector('#input-lat') as HTMLInputElement | null;
@@ -331,14 +332,16 @@ export class EvidencePanel {
         }
 
         const clearBtn = pane.querySelector('#btn-clear-inspect') as HTMLButtonElement | null;
-        if (clearBtn) {
+        if (clearBtn && !clearBtn.dataset.bound) {
+            clearBtn.dataset.bound = 'true';
             clearBtn.addEventListener('click', () => {
                 this.onClearAssessmentCallback?.();
             });
         }
 
         const downloadCsvBtn = pane.querySelector('#btn-download-assessment-csv') as HTMLButtonElement | null;
-        if (downloadCsvBtn) {
+        if (downloadCsvBtn && !downloadCsvBtn.dataset.bound) {
+            downloadCsvBtn.dataset.bound = 'true';
             downloadCsvBtn.addEventListener('click', () => {
                 if (this.currentAssessment) {
                     this.onDownloadAssessmentCsvCallback?.(this.currentAssessment);

@@ -10,7 +10,14 @@ export default defineConfig({
                 main: resolve(__dirname, 'index.html'),
                 prb: resolve(__dirname, 'prb.html'),
             },
+            output: {
+                manualChunks: {
+                    maplibre: ['maplibre-gl', 'maplibre-contour'],
+                    turf: ['@turf/boolean-point-in-polygon', '@turf/point-to-polygon-distance'],
+                },
+            },
         },
+        chunkSizeWarningLimit: 1000,
     },
 });
 
