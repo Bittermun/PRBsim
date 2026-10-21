@@ -16,12 +16,12 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "typescript": "^5.0.0",
-    "vite": "^5.0.0"
+    "vite": "^7.3.7"
   },
   "dependencies": {
     "@turf/boolean-point-in-polygon": "^7.4.0",
     "@turf/point-to-polygon-distance": "^7.4.0",
     "maplibre-contour": "^0.1.0",
-    "maplibre-gl": "^4.0.0"
+    "maplibre-gl": "^6.15.0"
   }
 }

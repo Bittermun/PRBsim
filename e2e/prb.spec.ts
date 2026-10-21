@@ -86,7 +86,7 @@ test.describe('Powder River Basin Coal-Fire Evidence Explorer E2E', () => {
     // Verify Epistemic Caveats are rendered without probability claims
     const caveats = inspector.locator('.caveats-list li');
     await expect(caveats.first()).toContainText('Causal direction unresolved');
-    await expect(caveats.nth(1)).toContainText('retrospective final footprint');
+    await expect(caveats.filter({ hasText: 'retrospective final footprint' })).toHaveCount(1);
     await expect(inspector.locator('#btn-download-assessment-csv')).toBeVisible();
 
     // Verify no synthetic influence warning in Real Mode

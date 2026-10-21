@@ -10,7 +10,7 @@
  * 6. Hit-priority click resolution so overlapping layers select the highest-priority feature
  */
 
-import type maplibregl from 'maplibre-gl';
+import type * as maplibregl from 'maplibre-gl';
 import type { FilteredEvidenceResult } from '../data/select.ts';
 
 export const LAYER_IDS = {
@@ -419,7 +419,7 @@ export function initEvidenceLayers(
             'text-size': 11,
             'text-offset': [0, 1.3],
             'text-anchor': 'top',
-            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+            'text-font': ['Noto Sans Regular'],
             'text-optional': true
         },
         paint: {

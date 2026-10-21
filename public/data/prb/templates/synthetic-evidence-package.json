@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "packageId": "synthetic-training-example",
+  "revision": 1,
+  "isSynthetic": true,
+  "description": "SYNTHETIC EXAMPLE ONLY. All locations, dates, observations, survey results and grouping are invented for software demonstration. This is not a field inventory or evidence of coal combustion.",
+  "sources": [
+    {
+      "id": "synthetic-source",
+      "name": "SYNTHETIC PRBsim intake training example",
+      "publisher": "PRBsim synthetic demonstration",
+      "retrievalDate": "2026-10-20",
+      "url": "https://example.invalid/prbsim-synthetic-demo",
+      "license": "CC0-1.0; invented training data only",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Invented coordinates; no measured accuracy",
+      "limitations": "SYNTHETIC ONLY. The reserved example.invalid URL is a placeholder, not an agency or field-data source. No survey, thermocouple reading or real coal fire is represented.",
+      "isSynthetic": true
+    }
+  ],
+  "sites": [
+    {
+      "id": "synthetic-site",
+      "name": "SYNTHETIC hypothetical multi-vent grouping",
+      "coalSeam": "Unknown; synthetic example",
+      "groupingUncertainty": "unresolved_multi_vent",
+      "groupingNotes": "SYNTHETIC: Two invented observation locations are grouped for interface testing. This does not establish a connected seam or independent fires.",
+      "boundaryGeometry": null,
+      "isSynthetic": true
+    }
+  ],
+  "observations": [
+    {
+      "id": "synthetic-report-a",
+      "siteId": "synthetic-site",
+      "label": "SYNTHETIC invented smoke report",
+      "observationDate": "2024-09-01",
+      "datePrecision": "day",
+      "status": "unverified_report",
+      "evidenceMethods": ["visual_smoke"],
+      "accuracyMeters": 0,
+      "sourceId": "synthetic-source",
+      "notes": "SYNTHETIC example of zero supplied position accuracy. Intake converts zero to unknown and retains this original value in package history. No smoke was observed.",
+      "isSynthetic": true,
+      "geometry": { "type": "Point", "coordinates": [-106.31, 45.025] }
+    },
+    {
+      "id": "synthetic-report-b",
+      "siteId": "synthetic-site",
+      "label": "SYNTHETIC invented month-precision narrative",
+      "observationDate": "2024-09-01",
+      "datePrecision": "month",
+      "status": "unverified_report",
+      "evidenceMethods": ["historical_record"],
+      "accuracyMeters": null,
+      "sourceId": "synthetic-source",
+      "notes": "SYNTHETIC month-precision date means an uncertain day in September, not activity throughout September. No historical observation is represented.",
+      "isSynthetic": true,
+      "geometry": { "type": "Point", "coordinates": [-106.307, 45.026] }
+    }
+  ],
+  "surveys": [
+    {
+      "id": "synthetic-survey",
+      "surveyName": "SYNTHETIC invented negative-survey footprint",
+      "surveyDate": "2024-07-15",
+      "method": "SYNTHETIC demonstration only; no actual instrument or field visit",
+      "result": "no_thermal_anomaly_detected",
+      "sourceId": "synthetic-source",
+      "notes": "SYNTHETIC ONLY. This polygon supplies no real baseline or uniform detection coverage. A real negative survey would remain limited by method, conditions and effective coverage.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-106.315, 45.021], [-106.302, 45.021], [-106.302, 45.029], [-106.315, 45.029], [-106.315, 45.021]]]
+      }
+    }
+  ]
+}

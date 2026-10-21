@@ -194,6 +194,7 @@ export class EvidencePanel {
     private onDownloadAssessmentCsvCallback: ((assessment: LocationAssessment) => void) | null = null;
     private selectedRecordId: string | null = null;
     private currentAssessment: LocationAssessment | null = null;
+    private temporalMatches: Record<string, 'possible' | 'certain'> = {};
 
     constructor(containerId: string, dataset: PRBEvidenceDataset) {
         const el = document.getElementById(containerId);
@@ -221,6 +222,27 @@ export class EvidencePanel {
 
     public getCurrentTab(): 'inspector' | 'records' | 'gaps' | 'manifest' {
         return this.currentTab;
+    }
+
+    /** Replace the dataset after local intake without retaining stale provenance or record cards. */
+    public setDataset(dataset: PRBEvidenceDataset): void {
+        const tab = this.currentTab;
+        this.dataset = dataset;
+        this.renderManifest();
+        this.renderDataGaps();
+        if (this.selectedRecordId) {
+            const id = this.selectedRecordId;
+            const observation = dataset.observations.find(record => record.id === id);
+            const perimeter = dataset.wildfirePerimeters.find(record => record.id === id);
+            const survey = dataset.surveys.find(record => record.id === id);
+            const geology = dataset.geologicalFeatures.find(record => record.id === id);
+            if (observation) this.selectFeature('observation', observation);
+            else if (perimeter) this.selectFeature('perimeter', perimeter);
+            else if (survey) this.selectFeature('survey', survey);
+            else if (geology) this.selectFeature('geology', geology);
+            else this.clearInspectorSelection();
+        }
+        this.switchTab(tab);
     }
 
     public clearAssessment(): void {
@@ -425,6 +447,7 @@ export class EvidencePanel {
     }
 
     public updateFilteredData(filtered: FilteredEvidenceResult): void {
+        this.temporalMatches = filtered.observationTemporalMatches || {};
         // Reconcile selection: if the currently inspected record was hidden by date or synthetic filter, clear it
         if (this.selectedRecordId) {
             const stillVisible =
@@ -434,6 +457,13 @@ export class EvidencePanel {
                 filtered.geologicalFeatures.some(g => g.id === this.selectedRecordId);
             if (!stillVisible) {
                 this.clearInspectorSelection();
+            } else {
+                const observation = filtered.observations.find(record => record.id === this.selectedRecordId);
+                const card = this.container.querySelector('.feature-detail-card');
+                if (observation && card) {
+                    card.querySelector('[data-observation-timing]')?.remove();
+                    card.insertAdjacentHTML('beforeend', this.renderObservationTimingNotice(observation.id));
+                }
             }
         }
 
@@ -478,6 +508,12 @@ export class EvidencePanel {
             if (lat > maxLat) maxLat = lat;
         }
         return [Number(((minLon + maxLon) / 2).toFixed(5)), Number(((minLat + maxLat) / 2).toFixed(5))];
+    }
+
+    private renderObservationTimingNotice(observationId: string): string {
+        return this.temporalMatches[observationId] === 'possible'
+            ? '<div class="callout-box info" data-observation-timing><strong>Possible date overlap:</strong> The exact day is unknown. This record may fall within the selected window; it does not show continuous activity.</div>'
+            : '';
     }
 
     public selectFeature(type: 'observation' | 'perimeter' | 'geology' | 'survey', props: Record<string, any>): void {
@@ -534,6 +570,7 @@ export class EvidencePanel {
                             <span class="prop-label">Observation Date / Interval</span>
                             <span class="prop-val">${escapeHtml(obs.observationDate)}${intervalDisplay} (Precision: ${escapeHtml(obs.datePrecision)})</span>
                         </div>
+                        ${this.renderObservationTimingNotice(obs.id)}
                         ${obs.lastObservedDate ? `
                         <div class="property-row">
                             <span class="prop-label">Last Observed</span>
@@ -758,7 +795,7 @@ export class EvidencePanel {
                 <tr>
                     <td><span class="tag ${o.isSynthetic ? 'tag-synthetic' : 'tag-obs'}">${o.isSynthetic ? 'SYNTHETIC OBS' : 'OBSERVATION'}</span></td>
                     <td>${escapeHtml(o.label)} <small>(${escapeHtml(accLabel)})</small></td>
-                    <td>${escapeHtml(o.observationDate)}${o.endDate ? ` → ${escapeHtml(o.endDate)}` : ''}</td>
+                    <td>${escapeHtml(o.observationDate)}${o.endDate ? ` → ${escapeHtml(o.endDate)}` : ''}<br/><small>${escapeHtml(o.datePrecision)} precision${filtered.observationTemporalMatches?.[o.id] === 'possible' ? '; possible date overlap — exact day unknown' : ''}</small></td>
                     <td><span class="status-badge status-${escapeHtml(o.status)}">${escapeHtml(o.status.replace(/_/g, ' '))}</span></td>
                     <td>
                         <button class="table-select-btn" data-type="obs" data-id="${escapeHtml(o.id)}" ${coords ? `data-lon="${coords[0]}" data-lat="${coords[1]}"` : ''}>Inspect</button>
@@ -809,7 +846,8 @@ export class EvidencePanel {
             <div class="records-table-container">
                 <div class="records-summary">
                     Showing <strong>${totalRecords}</strong> spatial records
-                    (${filtered.wildfirePerimeters.length} official final perimeter, ${filtered.realObservationCount} verified coal-fire observations${hasSynth ? `, ${filtered.activeSyntheticCount} synthetic/schematic fixtures` : ''}).
+                    (${filtered.wildfirePerimeters.length} wildfire perimeter, ${filtered.realObservationCount} non-synthetic coal-fire observation records${hasSynth ? `, ${filtered.activeSyntheticCount} synthetic/schematic fixtures` : ''}).
+                    ${filtered.observations.some(record => record.id.startsWith('local:')) ? '<p class="evidence-refresh-note">Local imported observations are unreviewed reports. Their presence does not verify underground combustion or close the primary-inventory data gap.</p>' : ''}
                 </div>
                 ${filtered.realObservationCount === 0 && !hasSynth ? `
                     <div class="callout-box info">
@@ -911,6 +949,7 @@ export class EvidencePanel {
 
         pane.innerHTML = `
             <div class="data-gaps-view">
+                ${this.dataset.observations.some(record => record.id.startsWith('local:')) ? `<p class="evidence-refresh-note">${this.dataset.observations.filter(record => record.id.startsWith('local:')).length} local observation reports loaded (including any quarantined synthetic examples). The source review below describes the bundled research audit; local imports still require review and do not automatically resolve those gaps.</p>` : ''}
                 <div class="research-question-banner">
                     <span class="rq-label">CORE RESEARCH QUESTION</span>
                     <p class="rq-text">"${escapeHtml(coreQuestion)}"</p>
@@ -965,7 +1004,8 @@ export class EvidencePanel {
         const pane = this.container.querySelector('#tab-manifest') as HTMLElement;
         if (!pane) return;
 
-        const { datasets, generatedAt } = this.dataset.manifest;
+        const { generatedAt } = this.dataset.manifest;
+        const datasets = [...this.dataset.manifest.datasets, ...(this.dataset.syntheticSources || [])];
 
         pane.innerHTML = `
             <div class="manifest-view">
@@ -977,11 +1017,13 @@ export class EvidencePanel {
                     ${datasets
                         .map(ds => {
                             const safeUrl = sanitizeExternalUrl(ds.url);
+                            const isLocal = ds.id.startsWith('local:');
                             const hashStatusBadge = ds.hashVerified
                                 ? `<span class="verified-badge">✓ Processed file hash matched</span>`
                                 : `<span class="tag tag-synthetic">Hash unverified</span>`;
                             const synthBadge = ds.isSynthetic
                                 ? `<span class="tag tag-synthetic">SYNTHETIC / SCHEMATIC FIXTURE</span>`
+                                : isLocal ? '<span class="status-badge status-unverified_report">LOCAL UNREVIEWED SOURCE</span>'
                                 : `<span class="status-badge status-field_confirmed">EMPIRICAL AGENCY RECORD</span>`;
                             return `
                                 <div class="dataset-card ${ds.isSynthetic ? 'dataset-synthetic' : ''}">
@@ -997,8 +1039,8 @@ export class EvidencePanel {
                                         <div><strong>Spatial Accuracy:</strong> ${escapeHtml(ds.spatialAccuracy)}</div>
                                         <div><strong>Limitations:</strong> ${escapeHtml(ds.limitations)}</div>
                                         <div class="hash-display">
-                                            <strong>Processed SHA256 (${hashStatusBadge}):</strong><br/>
-                                            <code>${escapeHtml(ds.processedSha256)}</code>
+                                            <strong>${isLocal ? 'Original package SHA256 (file identity only; claims unverified)' : `Processed SHA256 (${hashStatusBadge})`}:</strong><br/>
+                                            <code>${escapeHtml(isLocal ? ds.rawSha256 : ds.processedSha256)}</code>
                                         </div>
                                         ${
                                             safeUrl

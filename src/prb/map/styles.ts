@@ -8,6 +8,7 @@
 
 // @ts-ignore
 import mlcontour from 'maplibre-contour';
+import type * as maplibregl from 'maplibre-gl';
 
 export const ATTRIBUTIONS = {
     openFreeMap: '© <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>',
@@ -153,7 +154,7 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                     'symbol-placement': 'line',
                     'text-field': ['concat', ['to-string', ['get', 'ele']], 'm'],
                     'text-size': 9,
-                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                    'text-font': ['Noto Sans Regular'],
                     'text-max-angle': 25,
                 },
                 paint: {
@@ -181,7 +182,7 @@ export function createContourStyle(demSource: any): maplibregl.StyleSpecificatio
                 layout: {
                     'text-field': ['get', 'name'],
                     'text-size': 11,
-                    'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+                    'text-font': ['Noto Sans Regular'],
                     'text-transform': 'uppercase',
                 },
                 paint: {

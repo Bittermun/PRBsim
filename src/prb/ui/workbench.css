@@ -1,0 +1,83 @@
+.research-workbench {
+    width: min(1080px, calc(100vw - 40px));
+    max-width: none;
+    height: min(840px, calc(100dvh - 40px));
+    max-height: calc(100dvh - 40px);
+    margin: auto;
+    padding: 0;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 80px #0005;
+    overflow: hidden;
+}
+.research-workbench[open] { display: flex; flex-direction: column; }
+.research-workbench::backdrop { background: #0f172a99; }
+.workbench-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 26px 18px; }
+.workbench-header h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.025em; }
+.workbench-header p { color: var(--text-secondary); font-size: 14px; line-height: 1.45; }
+.research-workbench button { font-family: inherit; font-size: 14px; cursor: pointer; border: 1px solid var(--border-strong); border-radius: 6px; padding: 9px 13px; color: var(--text-primary); background: var(--bg-secondary); }
+.research-workbench button:hover:enabled { background: var(--bg-hover); }
+.research-workbench button:disabled { opacity: .55; cursor: default; }
+.research-workbench :focus-visible { outline: 3px solid var(--accent-primary); outline-offset: 3px; }
+.workbench-close { flex-shrink: 0; }
+.workbench-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--border-strong); padding: 0 26px 12px; }
+.workbench-tabs [role="tab"] { border-color: transparent; background: transparent; font-weight: 600; }
+.workbench-tabs [aria-selected="true"] { border-color: var(--accent-primary); background: var(--accent-survey-bg); box-shadow: inset 0 -2px 0 var(--accent-primary); }
+.workbench-body { overflow: auto; padding: 24px 26px; flex: 1; min-height: 0; overscroll-behavior: contain; }
+.workbench-body [hidden] { display: none !important; }
+.research-workbench h2 { font-size: 21px; margin-bottom: 12px; }
+.research-workbench h3 { font-size: 16px; margin: 20px 0 8px; }
+.research-workbench p, .research-workbench li { font-size: 14px; line-height: 1.6; }
+.research-workbench p { margin: 0 0 12px; }
+.research-workbench ul { padding-left: 22px; margin: 8px 0 14px; }
+.research-workbench li { margin-bottom: 6px; }
+.research-workbench a { color: var(--accent-hover); text-decoration: underline; text-underline-offset: 3px; }
+.research-workbench label { display: flex; flex-direction: column; gap: 7px; font-weight: 600; font-size: 13px; line-height: 1.4; }
+.research-workbench input { font: inherit; min-width: 0; width: 100%; padding: 9px 10px; border: 1px solid var(--border-strong); color: var(--text-primary); background: var(--bg-primary); border-radius: 5px; }
+.research-workbench input[type="file"] { margin: 9px 0 12px; }
+.research-workbench fieldset { min-width: 0; padding: 15px; border: 1px solid var(--border-strong); border-radius: 7px; }
+.research-workbench legend { padding: 0 6px; font-size: 13px; font-weight: 600; }
+.tool-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.tool-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.tool-actions button[type="submit"], .research-workbench [data-import-apply]:enabled { background: var(--accent-survey-bg); border-color: var(--accent-primary); font-weight: 600; }
+.tool-note, .tool-warning, [data-import-persistence], [data-import-status], .satellite-status, .heat-status { padding: 12px 14px; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-left: 3px solid var(--accent-primary); border-radius: 4px; }
+.tool-warning { border-left-color: var(--status-sensor); }
+[data-workbench-evidence-note]:empty, [data-import-preview]:empty { display: none; }
+[data-import-preview] { background: var(--bg-secondary); border: 1px solid var(--border-strong); border-radius: 6px; padding: 0 16px 8px; margin: 16px 0; }
+.import-checksum code, [data-import-history], .research-workbench td { overflow-wrap: anywhere; }
+.tool-table-scroll { overflow: auto; max-width: 100%; }
+.research-workbench table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 13px; }
+.research-workbench th, .research-workbench td { text-align: left; padding: 10px 12px; border: 1px solid var(--border-subtle); vertical-align: top; line-height: 1.5; }
+.research-workbench th { background: var(--bg-secondary); }
+.research-workbench svg { width: 100%; max-height: 360px; height: auto; display: block; }
+.heat-chart { --heat-series-a: #8a3a00; --heat-series-b: #005d73; }
+[data-theme="dark"] .heat-chart { --heat-series-a: #f5ae61; --heat-series-b: #6fd6ed; }
+.evidence-refresh-note { font-size: 12px; line-height: 1.5; padding: 10px; margin: 8px 0; border-left: 3px solid var(--accent-primary); background: var(--bg-secondary); }
+
+/* Let the existing workspace and its new entry point fit narrow screens. */
+.prb-header { height: auto; min-height: 76px; flex-wrap: wrap; gap: 8px 16px; padding: 10px 16px; }
+.brand-section { flex: 1 1 650px; flex-wrap: wrap; gap: 6px 10px; }
+.brand-title { flex-basis: 100%; }
+.header-actions { flex-wrap: wrap; gap: 7px; }
+#active-mode-notice { white-space: normal; line-height: 1.5; }
+@media (max-width: 1180px) {
+    .prb-header { height: auto; min-height: 64px; flex-wrap: wrap; gap: 10px; padding: 10px 14px; }
+    .brand-section { flex-wrap: wrap; gap: 6px 10px; }
+    .header-actions { flex-wrap: wrap; gap: 7px; }
+    .brand-title { font-size: 13px; }
+    #active-mode-notice { white-space: normal; line-height: 1.5; }
+}
+@media (max-width: 680px) {
+    .research-workbench { width: calc(100vw - 16px); height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
+    .workbench-header { padding: 18px 16px 14px; gap: 10px; }
+    .workbench-header h1 { font-size: 21px; }
+    .workbench-header p { font-size: 13px; }
+    .workbench-tabs { padding: 0 12px 10px; gap: 2px; }
+    .workbench-tabs button { font-size: 13px; padding: 9px 10px; }
+    .workbench-body { padding: 18px 16px; }
+    .tool-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .research-workbench p, .research-workbench li { font-size: 13px; }
+    .prb-header .btn-header { font-size: 10px; padding: 6px 8px; }
+}

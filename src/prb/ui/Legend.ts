@@ -85,12 +85,12 @@ export class MapLegend {
                     <label class="layer-toggle-label">
                         <input type="checkbox" id="layer-obs" ${this.state.showObservations ? 'checked' : ''} />
                         <span class="swatch swatch-obs"></span>
-                        <span>Combustion Observations &amp; Vents (Synthetic Mode Only)</span>
+                        <span>Underground observation reports (local imports remain unreviewed; synthetic fixtures stay quarantined)</span>
                     </label>
                     <label class="layer-toggle-label">
                         <input type="checkbox" id="layer-surveys" ${this.state.showSurveys ? 'checked' : ''} />
                         <span class="swatch swatch-survey"></span>
-                        <span>Negative Thermal Surveys (Bounded, Synthetic Mode)</span>
+                        <span>Survey coverage records (local claims require review; synthetic fixtures stay quarantined)</span>
                     </label>
                     <label class="layer-toggle-label">
                         <input type="checkbox" id="layer-geology" ${this.state.showGeology ? 'checked' : ''} />
@@ -104,7 +104,7 @@ export class MapLegend {
                     <div class="status-key-grid">
                         <div class="status-key-item"><span class="dot dot-field" style="width:10px;height:10px;border:2px solid #065f46;"></span> Field Confirmed (Large r=8, Thick White Ring)</div>
                         <div class="status-key-item"><span class="dot dot-sensor" style="width:9px;height:9px;border:2px solid #1e293b;"></span> Sensor Detection (Med r=7, Dark Ring)</div>
-                        <div class="status-key-item"><span class="dot dot-unverified" style="width:7px;height:7px;border:1px dashed #5b21b6;"></span> Unverified Narrative / Historical (Small r=5.5)</div>
+                        <div class="status-key-item"><span class="dot dot-unverified" style="width:7px;height:7px;border:1px dashed #5b21b6;"></span> Unreviewed / Unverified Report (Small r=5.5)</div>
                         <div class="status-key-item"><span class="dot dot-extinguished" style="width:7px;height:7px;border:1.5px solid #475569;"></span> Extinguished / Inactive Vent (Small r=5)</div>
                         <div class="status-key-item"><span class="dot dot-reignited" style="width:11px;height:11px;border:2px solid #fef08a;"></span> Re-ignited Vegetation Hypothesis (XL r=9)</div>
                     </div>

@@ -82,6 +82,20 @@ function buildSourceLookup(manifest: EvidenceManifest, syntheticSources: Dataset
     return map;
 }
 
+function describeExportEvidence(filtered: FilteredEvidenceResult) {
+    const localUnreviewedObservations = filtered.observations.filter(record => record.id.startsWith('local:')).length;
+    const localUnreviewedSurveys = filtered.surveys.filter(record => record.id.startsWith('local:')).length;
+    return {
+        wildfirePerimeters: filtered.wildfirePerimeters.length,
+        observationRecords: filtered.observations.length,
+        localUnreviewedObservations,
+        localUnreviewedSurveys,
+        surveyRecords: filtered.surveys.length,
+        syntheticRecords: filtered.activeSyntheticCount,
+        description: `${filtered.wildfirePerimeters.length} wildfire perimeter(s), ${filtered.observations.length} observation record(s), and ${filtered.surveys.length} survey record(s). Includes ${localUnreviewedObservations} local unreviewed observation report(s) and ${localUnreviewedSurveys} local unreviewed survey report(s). Local sources and claims have not been independently verified. Record overlap does not establish combustion or causal direction.`
+    };
+}
+
 /**
  * Validates that an assessment is valid to export alongside the active filtered dataset.
  */
@@ -321,8 +335,10 @@ export function buildExportGeoJson(
             includesSyntheticFixtures: filterState.includeSynthetic,
             syntheticWarning: filterState.includeSynthetic
                 ? 'WARNING: THIS EXPORT CONTAINS SYNTHETIC VALIDATION FIXTURES AND SCHEMATIC GEOLOGY. DO NOT CITE AS REAL FIELD DATA.'
-                : 'Verified empirical dataset only (1 WFIGS retrospective final perimeter; 0 verified coal-fire points).',
-            datasets: manifest.datasets,
+                : `Synthetic fixtures excluded. ${describeExportEvidence(filtered).description}`,
+            evidenceSummary: describeExportEvidence(filtered),
+            datasets: [...buildSourceLookup(manifest, filterState.includeSynthetic ? syntheticSources : []).values()]
+                .filter(source => filterState.includeSynthetic || !source.isSynthetic),
             remingtonCaseChronology: manifest.remingtonCaseChronology || null,
             ...(assessment ? { locationAssessment: assessment } : {})
         },
@@ -475,10 +491,12 @@ export function buildStaticBriefHtml(
     filterState: ExportWindowMeta,
     mapSnapshotDataUrl: string,
     captureErrorMessage = '',
-    assessment?: LocationAssessment | null
+    assessment?: LocationAssessment | null,
+    syntheticSources: DatasetSource[] = []
 ): string {
     validateAssessmentForExport(assessment, filtered, filterState);
     const hasSynth = filtered.activeSyntheticCount > 0;
+    const evidenceSummary = describeExportEvidence(filtered);
     const chronology = manifest.remingtonCaseChronology;
     const safeSnapshotDataUrl =
         typeof mapSnapshotDataUrl === 'string' && /^data:image\/png(?:;base64)?,[A-Za-z0-9+/=%]+$/i.test(mapSnapshotDataUrl)
@@ -594,7 +612,7 @@ export function buildStaticBriefHtml(
     ${
         hasSynth
             ? `<div class="synth-banner">⚠ SYNTHETIC VALIDATION FIXTURES ACTIVE (${filtered.activeSyntheticCount} records): This report includes synthetic test observations, negative surveys, and schematic geology. Do not cite synthetic records as empirical measurements.</div>`
-            : `<div class="verified-banner">✓ REAL MODE: Contains 1 official WFIGS retrospective final wildfire perimeter (polygon map date 2025-01-15) and 0 verified coal-fire point observations or local geology vectors.</div>`
+            : `<div class="verified-banner">Synthetic fixtures excluded. ${escapeHtml(evidenceSummary.description)}</div>`
     }
 
     <h2>${sec++}. Core Research Question</h2>
@@ -659,7 +677,7 @@ export function buildStaticBriefHtml(
                     <td><code>${escapeHtml(rel.perimeterId)}</code></td>
                     <td><strong>${rel.nominalRelation.toUpperCase()}</strong> (${escapeHtml(rel.coordinateUncertainty)})</td>
                     <td>${Math.round(rel.approximateBoundaryDistanceMeters).toLocaleString()} m</td>
-                    <td>${rel.daysFromIncidentDiscovery !== null ? `${rel.daysFromIncidentDiscovery > 0 ? '+' : ''}${rel.daysFromIncidentDiscovery} days` : 'No observation date'}</td>
+                    <td>${rel.daysFromIncidentDiscovery !== null ? `${rel.daysFromIncidentDiscovery > 0 ? '+' : ''}${rel.daysFromIncidentDiscovery} days` : assessment.observationDate ? `Day offset unavailable (${escapeHtml(assessment.observationDatePrecision || 'unknown')} precision)` : 'Query coordinate; no observation date'}</td>
                     <td><code>${escapeHtml(rel.temporalReference)}</code><br/><small>Local fire arrival: unavailable</small></td>
                 </tr>
                 `
@@ -703,11 +721,11 @@ export function buildStaticBriefHtml(
         <div><strong>Solid Red Outline + Translucent Fill:</strong> Official 2024 Remington Wildfire Final Perimeter (WFIGS retrospective boundary, polygon timestamp 2025-01-15; not daily fire progression).</div>
         <div><strong>Emerald Circle (Thick White Stroke, r=8):</strong> Field-Confirmed Subsurface Combustion Vent (thermocouple / gas verification).</div>
         <div><strong>Amber Circle (Dark Stroke, r=7):</strong> Remote/Aerial Thermal IR Sensor Detection (awaiting ground confirmation).</div>
-        <div><strong>Purple Circle (Light Stroke, r=5.5):</strong> Unverified Historical / Narrative Outcrop Report.</div>
+        <div><strong>Purple Circle (Light Stroke, r=5.5):</strong> Unreviewed / Unverified Observation Report, including local imports.</div>
         <div><strong>Slate Circle (White Stroke, r=5):</strong> Extinguished / Inactive Historical Vent.</div>
         <div><strong>Red Circle (Yellow Halo Stroke, r=9):</strong> Re-ignited Surface Vegetation Hypothesis.</div>
         <div><strong>Dashed Orange Polygon:</strong> Parent Coal-Seam Site Complex with unresolved multi-vent subsurface connectivity.</div>
-        <div><strong>Dashed Sky-Blue Polygon:</strong> Bounded Negative Thermal Survey Footprint (surveyed, 0 anomalies detected).</div>
+        <div><strong>Dashed Sky-Blue Polygon:</strong> Reported Survey Coverage. Negative results remain limited by method and sensitivity; local imports require review.</div>
         <div><strong>Dashed Amber/Slate Stratigraphic Polygons:</strong> Quarantined Schematic Clinker &amp; Coal Outcrop Context Fixtures (synthetic mode only).</div>
     </div>
 
@@ -868,11 +886,12 @@ export function buildStaticBriefHtml(
                 <th>Dataset</th>
                 <th>Publisher &amp; License</th>
                 <th>Type</th>
-                <th>Processed SHA256</th>
+                <th>Checksum and scope</th>
             </tr>
         </thead>
         <tbody>
-            ${manifest.datasets
+            ${[...buildSourceLookup(manifest, filterState.includeSynthetic ? syntheticSources : []).values()]
+                .filter(source => filterState.includeSynthetic || !source.isSynthetic)
                 .map(ds => {
                     const safeUrl = sanitizeExternalUrl(ds.url);
                     return `
@@ -883,8 +902,8 @@ export function buildStaticBriefHtml(
                             : ''
                     }</td>
                     <td>${escapeHtml(ds.publisher)}<br/><small>${escapeHtml(ds.license)}</small></td>
-                    <td>${ds.isSynthetic ? 'Synthetic / Schematic Fixture' : 'Empirical Agency Record'}</td>
-                    <td><code>${escapeHtml(ds.processedSha256)}</code></td>
+                    <td>${ds.isSynthetic ? 'Synthetic / Schematic Fixture' : ds.id.startsWith('local:') ? 'Local unreviewed source' : 'Empirical Agency Record'}</td>
+                    <td>${ds.id.startsWith('local:') ? `Original package SHA256: <code>${escapeHtml(ds.rawSha256)}</code><br/>Identifies original file bytes; does not verify its source or claims. Normalized record hash unavailable.` : `Processed SHA256: <code>${escapeHtml(ds.processedSha256)}</code><br/>${ds.hashVerified ? 'Processed file hash matched; claims retain their stated source limits.' : 'Processed file hash unverified.'}`}</td>
                 </tr>
             `;
                 })
@@ -946,7 +965,8 @@ export function openPrintableEvidenceBrief(
     manifest: EvidenceManifest,
     filterState: ExportWindowMeta,
     mapCanvas?: HTMLCanvasElement | null,
-    assessment?: LocationAssessment | null
+    assessment?: LocationAssessment | null,
+    syntheticSources: DatasetSource[] = []
 ): void {
     let mapSnapshotDataUrl = '';
     let captureErrorMessage = '';
@@ -971,7 +991,8 @@ export function openPrintableEvidenceBrief(
         filterState,
         mapSnapshotDataUrl,
         captureErrorMessage,
-        assessment
+        assessment,
+        syntheticSources
     );
 
     const win = window.open('', '_blank');

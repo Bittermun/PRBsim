@@ -8,14 +8,17 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
-    trace: 'on-first-retry',
+    baseURL: 'http://localhost:5175',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
     viewport: { width: 1400, height: 900 },
     launchOptions: {
       args: [
         '--enable-webgl',
         '--ignore-gpu-blocklist',
-        '--use-gl=swiftshader'
+        '--use-gl=angle',
+        '--use-angle=swiftshader',
+        '--enable-unsafe-swiftshader'
       ]
     }
   },
@@ -26,9 +29,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    command: 'npm run dev -- --host localhost --port 5175 --strictPort',
+    url: 'http://localhost:5175',
+    reuseExistingServer: false,
     timeout: 30000,
   },
 });

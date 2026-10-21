@@ -22,6 +22,7 @@ import type {
     GeologicalContextFeature
 } from './types.ts';
 import { ValidationError, isValidIsoCalendarDate } from './load.ts';
+import { observationWindowMatch } from './dates.ts';
 
 export interface FilteredEvidenceResult {
     wildfirePerimeters: WildfirePerimeterRecord[];
@@ -31,6 +32,8 @@ export interface FilteredEvidenceResult {
     surveys: SurveyCoverageRecord[];
     activeSyntheticCount: number;
     realObservationCount: number;
+    /** Certain/possible event-time overlap; coarse periods never imply continuous activity. */
+    observationTemporalMatches?: Record<string, 'possible' | 'certain'>;
 }
 
 /**
@@ -101,7 +104,9 @@ export function filterEvidence(
         if (p.temporalRole === 'retrospective_final_footprint') {
             return true;
         }
-        return isDateWithinWindow(p.discoveryDate, filter.startDate, filter.endDate, p.controlDate);
+        // A snapshot is an observation on mapDate, not an interval spanning the incident lifecycle.
+        // This operation selects snapshots within the inclusive window, not the latest prior snapshot.
+        return isDateWithinWindow(p.mapDate, filter.startDate, filter.endDate);
     });
 
     // 2. Filter Geological Context Features (quarantining schematic polygons when includeSynthetic is false)
@@ -111,16 +116,14 @@ export function filterEvidence(
     });
 
     // 3. Filter Observations (supporting observationDate..endDate intervals)
+    const observationTemporalMatches = new Map<string, 'possible' | 'certain'>();
     const observations = dataset.observations.filter(obs => {
         if (!filter.includeSynthetic && obs.isSynthetic) return false;
         if (!allowedStatusSet.has(obs.status)) return false;
         if (filter.selectedSiteId && obs.siteId !== filter.selectedSiteId) return false;
-        return isDateWithinWindow(
-            obs.observationDate,
-            filter.startDate,
-            filter.endDate,
-            obs.endDate
-        );
+        const match = observationWindowMatch(obs, filter.startDate, filter.endDate);
+        if (match) observationTemporalMatches.set(obs.id, match);
+        return match !== null;
     });
 
     // 4. Filter Sites (include sites that match synthetic flag and have >=1 visible observation or are explicitly selected)
@@ -153,7 +156,8 @@ export function filterEvidence(
         observations,
         surveys,
         activeSyntheticCount,
-        realObservationCount
+        realObservationCount,
+        observationTemporalMatches: Object.fromEntries(observationTemporalMatches)
     };
 }
 
