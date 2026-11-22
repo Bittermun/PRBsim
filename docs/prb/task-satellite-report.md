@@ -1,6 +1,6 @@
 # Satellite scene discovery: implementation and evidence
 
-Checked 2026-10-20 America/Los_Angeles (2026-10-21 UTC). References: A1, B1, B4, L4. This implements scene discovery, not thermal analysis or coal-fire detection. The controller owns shared work-log/index updates and final integration checks.
+Checked 2026-10-20 America/Los_Angeles (2026-10-21 UTC). References: A1, B1, B4, L4. This implements scene discovery, not thermal analysis or coal-fire detection. Later integrated checks are recorded in the [work log](WORK_LOG.md).
 
 ## Official source contract
 
@@ -65,8 +65,6 @@ Request: bbox `[-106.5,44.75,-105.7,45.5]`, `2024-08-01T00:00:00Z/2024-10-01T23:
 
 The live browser check is saved separately in `e2e/satellite-live.spec.ts`, skipped unless `PRB_LIVE_CATALOG=1`. Run in PowerShell with `$env:PRB_LIVE_CATALOG = '1'; npx playwright test e2e/satellite-live.spec.ts --reporter=line`. Deterministic fixtures do not call the catalog. Neither live probe downloaded rasters.
 
-## Limits and next useful check
+## Limits
 
 Availability, counts and CORS behavior are service observations at the stated time. Service changes/offline use can fail without disabling other tools. This first slice shows a bounded page, not an exhaustive scene inventory. Rectangular scene overlap and whole-scene cloud percentages do not establish clear coverage of the selected ground, valid temperature pixels, nighttime availability, thermal anomalies, or underground combustion. No pixel masks, raster processing, temperature values, scientific inference or site-specific validation were implemented.
-
-Next: controller verifies the mounted Research tools dialog and responsive styling, then records final integrated test results in project memory. A later thermal-analysis feasibility study must independently inspect actual pixel masks, product availability and confounders before making temperature or fire claims.

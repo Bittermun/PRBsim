@@ -53,9 +53,9 @@ node --experimental-strip-types --test tests/prb/temporal-regressions.test.js te
 
 A full `npm test` was also run while sibling modules were still being finalized: 87/89 passed. The two failures were both in in-progress import work: **a synthetic package cannot become empirical through a later revision**, and **the downloadable example is explicitly synthetic and can be previewed without fabricated empirical claims** (example not yet created at that instant). All temporal, assessment, existing evidence/export/geometry, and satellite tests passed in that run. These results are a dated intermediate snapshot, not a claim about final integrated status.
 
-## Remaining work and limitations
+## Checkpoint limits
 
-The controller still must wire the bounds and full assessment context and display possible/certain overlap in its evidence UI; browser verification belongs to integration. A latest-snapshot-at-or-before operation is not implemented: this filter is explicitly inclusive interval selection. Baseline sensitivity, survey completeness, source authenticity, physical site behavior, and causal direction remain scientifically unresolved. No files were staged or committed, and no sibling-owned implementation files were changed.
+This checkpoint covered the temporal and assessment module. The [integration report](task-integration-report.md) records the subsequent browser checks. A latest-snapshot-at-or-before operation is not implemented: this filter is explicitly inclusive interval selection. Baseline sensitivity, survey completeness, source authenticity, physical site behavior, and causal direction remain scientifically unresolved. No files were staged or committed, and no sibling-owned implementation files were changed.
 
 ## Independent-review follow-up: imported revision identity
 

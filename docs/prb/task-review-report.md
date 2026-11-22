@@ -4,7 +4,7 @@ Review date: 2026-10-20 America/Los_Angeles (2026-10-21 UTC). Reviewed the manag
 
 ## Outcome
 
-No unresolved P1/P2 finding remains within the agreed first implementation after the corrections below. The reviewer recommends proceeding to the controller's final original-checkout synchronization and verification. This review does not establish scientific field validation or a remotely completed CI run.
+No unresolved P1/P2 finding remains within the agreed first implementation after the corrections below. The [work log](WORK_LOG.md) records the subsequent original-checkout verification. This review does not establish scientific field validation or a remotely completed CI run.
 
 ## Findings and corrections
 
@@ -34,10 +34,10 @@ These are the reviewer's runs, distinct from module-owner reports and the final 
 - `npm audit --json` independently reported **0 vulnerabilities** after dependency remediation.
 - Local MapLibre 6 source and final CI/browser configuration were reviewed. A first attempt to use integration's already-stopped server returned connection refused; it was a review setup issue. A separate strict-port review server was used afterward, then stopped; port 5176 closure was confirmed.
 
-Integration-owner checkpoint (separate from the reviewer's runs): **110/110 unit tests**, production build exit 0, audit 0, whitespace check exit 0, and full Chromium **24 passed / 2 intentionally skipped live checks**. The separate opt-in live cartography check passed Positron and contour perimeter rendering, actual hillshade, and glyph HTTP 200 with an empty recorded network/console failure list. [Integration handoff](task-integration-report.md) explicitly identifies this checkpoint as preceding the final initial-condition correction. The controller owns the final complete check after copying into the original project.
+Integration-owner checkpoint (separate from the reviewer's runs): **110/110 unit tests**, production build exit 0, audit 0, whitespace check exit 0, and full Chromium **24 passed / 2 intentionally skipped live checks**. The separate opt-in live cartography check passed Positron and contour perimeter rendering, actual hillshade, and glyph HTTP 200 with an empty recorded network/console failure list. [Integration handoff](task-integration-report.md) explicitly identifies this checkpoint as preceding the final initial-condition correction.
 
-## Claim limits and remaining work
+## Evidence limits
 
-This is a useful first implementation, with software and numerical checks at the stated scope. Satellite search discovers scene metadata; it does not process temperature rasters or detect underground combustion. Local intake preserves attributed, unreviewed reports; it does not supply an acquired primary inventory, direct ODK capture, source authentication or a completed scientific review workflow. The heat lab solves an illustrative one-dimensional conduction problem; its analytical agreement does not validate coal combustion, ignition or Remington field behavior.
+Satellite search discovers scene metadata; it does not process temperature rasters or detect underground combustion. Local intake preserves attributed, unreviewed reports; it does not supply an acquired primary inventory, direct ODK capture, source authentication or a completed scientific review workflow. The heat lab solves an illustrative one-dimensional conduction problem; its analytical agreement does not validate coal combustion, ignition or Remington field behavior.
 
-No verified underground observation inventory or new field measurements were acquired by this review. Cross-tab storage checks are a conflict guard, not collaborative transactions. Polygon checks are structural, not full topology/survey-quality validation. Public satellite and map services remain external dependencies. The next scientific checks still require real source packages, measured/calibrated properties, observational sensitivity and independent field comparison.
+No verified underground observation inventory or new field measurements were acquired by this review. Cross-tab storage checks are a conflict guard, not collaborative transactions. Polygon checks are structural, not full topology/survey-quality validation. Public satellite and map services remain external dependencies.

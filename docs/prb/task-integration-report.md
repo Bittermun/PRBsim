@@ -26,7 +26,7 @@ These are software correctness and integration outcomes, not new geospatial evid
 
 ## Observed verification checkpoint
 
-The complete checkpoint below ran **after the final integration, font, and legend changes**. A later independent review identified a shallow-depth initial-sample issue in the heat lab; the heat owner’s follow-up and the controller’s final whole-project verification are recorded separately. Do not present this 110-test checkpoint as the final post-follow-up result.
+The complete checkpoint below ran **after the final integration, font, and legend changes**. A later independent review identified a shallow-depth initial-sample issue in the heat lab; the heat owner’s follow-up and the controller’s final whole-project verification are recorded separately. The [work log](WORK_LOG.md) records the later checks after that correction.
 
 | Check | Observed result |
 | --- | --- |

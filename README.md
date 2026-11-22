@@ -1,8 +1,7 @@
 # PRBsim
 
-[Development concepts, strategies, and lessons index](docs/prb/INDEX.md)
-
-[Project working memory and learning log](docs/prb/WORK_LOG.md)
+PRBsim is a map and evidence workbench for wildfire perimeters, geological
+context, and local observations. Use Node.js 24 or later.
 
 ```sh
 npm ci
@@ -11,9 +10,13 @@ npm run dev
 
 Open the local URL printed by Vite.
 
-Use **Research tools** in the header to preview and import local evidence packages, search Landsat scene metadata, or compare illustrative heat conduction at two depths. Imports remain local unreviewed reports; the downloadable training package is synthetic and stays hidden until synthetic fixtures are enabled. [Import format and limits](docs/prb/local-evidence-format.md).
+**Research tools** includes [local evidence import](docs/prb/local-evidence-format.md),
+Landsat scene metadata search, and a one-dimensional conduction lab. Local
+imports are unreviewed. Landsat search returns metadata, and the lab illustrates
+conduction under prescribed conditions. The [source records](docs/prb/sources.md)
+describe the bundled evidence and its limits.
 
-Scene discovery finds available satellite records; it does not process temperature pixels or detect coal fires. The heat lab checks stage-one conduction calculations and does not simulate combustion or predict site behavior. No verified underground-fire inventory has been added to the bundled evidence.
+[Research index](docs/prb/INDEX.md) · [Verification log](docs/prb/WORK_LOG.md)
 
 Checks:
 

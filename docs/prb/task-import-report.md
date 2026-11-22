@@ -68,8 +68,9 @@ All commands ran in `C:/Users/msunw/.codex/worktrees/coal-evidence-workbench/PRB
 
 Focused checks cover exact-byte SHA-256/BOM recovery, current duplicates, stale/conflicting/new revisions, unrelated packages, synthetic quarantine, zero accuracy, malformed arrays/metadata/dates/enums/geometry, out-of-range coordinates, duplicate/missing IDs, oversized input and coordinate budgets, copied/mutated previews, raw-history restoration, corruption, access/quota/removal failure, stale saved archives and HTML escaping. A valid original larger than 1 MiB was also imported, downloaded and restored successfully.
 
-## Limits and next useful checks
+## Limits
 
 The input format supports the existing domain schema, not structured calibration/measurements/attachments, photo uploads, direct ODK synchronization, shared review or a verified publication workflow. Basic geometry validation does not prove complete polygon topology or meaningful survey coverage. Checksums are not authenticity guarantees. Browser quota may be lower than the application bounds (2 MiB/file, 5,000 records/file, 100,000 coordinate positions/file, 50 revisions and 8 MiB originals/history). Use one active importing tab; this is not a cross-tab transaction protocol.
 
-The next useful check is the controller's real browser flow: preview/apply the synthetic sample; confirm it is hidden from real evidence; re-import it unchanged; apply an edited revision; reload and recover originals; simulate unavailable/quota/corrupt storage; remove imports; verify map, records, timeline, provenance and exports all refresh without promoting local claims. That integrated browser flow was not run by this module agent. No new empirical inventory or independently reviewed field evidence was acquired.
+The module checks used fixtures. The [integration report](task-integration-report.md)
+records the subsequent browser verification.

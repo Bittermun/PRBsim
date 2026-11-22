@@ -42,16 +42,18 @@ These files are **excluded from default real-data views, tables, and real-mode e
 
 ---
 
-## 3. Phase 5 Research Artifact: Remington Case Study Evidence & Chronology Matrix (Non-Spatial)
+## 3. Remington evidence and chronology
 
-Because no public GPS/IR point inventory of post-2024 coal-seam fires was acquired from the public agency repositories checked as of September 2026, PRBsim records post-fire coal activity leads in a structured, non-spatial evidence matrix rather than inventing point coordinates:
+The public agency repositories checked as of September 2026 yielded no
+GPS/IR point inventory of post-2024 coal-seam fires. The table records the
+available perimeter evidence and the scope of the reported coal activity.
 
 | Event Time | Report / Pub Time | Mapped Perimeter Time | Category | Claim / Reported Postfire Coal Activity | Survey Coverage, Pre-Fire Baseline & Grouping Uncertainty | Source |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `2024-08-22` | `2024-08-22` | `2025-01-15` | `verified_geospatial_record` | Remington Wildfire discovery in Sheridan County, WY, burning into Big Horn, Rosebud, and Powder River Counties, MT. Reported WFIGS cause: Natural / Lightning (`attr_IsFireCauseInvestigated=0`). | Final cumulative perimeter only (`196,368.1 acres`); no daily progression series or pre-August 2024 coal-fire baseline in WFIGS. | NIFC WFIGS (`{2B136641-8C91-4C70-960D-64E05BC390E4}`) |
 | `2024-09-21` to `2024-11-12` | `2025-01-15` | `2025-01-15` | `verified_geospatial_record` | WFIGS containment (`2024-09-21`), control (`2024-11-12`), and final polygon snapshot (`poly_PolygonDateTime: 2025-01-15`). | Single retrospective final boundary snapshot (`2025-01-15`). | NIFC WFIGS (`2024-WYSHX-240442`) |
-| `2024–2025` (post-fire survey period) | `2025-09` | Unpublished in public GIS | `attributed_secondary_report` | **Montana Free Press (Leigh Walden, Sept 2025)** reported 107 burning coal seams mapped in connection with the 2024 Remington Wildfire scar. Treated strictly as an **attributed secondary report**, not a verified count of newly ignited independent subsurface fires. | **Survey Coverage**: Primary GPS/IR tracklines and negative survey bounds unpublished.<br/>**Baseline**: Unresolved how many of the 107 thermal features were newly ignited in Aug 2024 vs. pre-existing smoldering seams.<br/>**Grouping**: Unresolved whether "107" counts individual fumaroles/vents along shared coal beds or independent subsurface combustion bodies. | Leigh Walden, *Montana Free Press* (Sept 2025) |
-| `2025–2026` | `2026-02` | Primary dataset not yet acquired | `unverified_primary_source_lead` | **February 2026 Montana DES / County Mapping Bulletin** identified as a primary-source follow-up lead to trace the survey holder, coordinates, and methodology behind post-Remington coal-fire counts. | Primary GIS dataset not yet acquired in local repository; rendered strictly as a non-spatial research lead. | Montana DES (`https://des.mt.gov/`) |
+| `2024–2025` (post-fire survey period) | `2025-09` | No snapshot date in reviewed sources | `attributed_secondary_report` | **Montana Free Press (Leigh Walden, Sept 2025)** reported 107 burning coal seams mapped in connection with the 2024 Remington Wildfire scar. Treated strictly as an **attributed secondary report**, not a verified count of newly ignited independent subsurface fires. | **Survey Coverage**: The reviewed sources did not contain the primary GPS/IR tracklines or negative-survey bounds.<br/>**Baseline**: Unresolved how many of the 107 thermal features were newly ignited in Aug 2024 vs. pre-existing smoldering seams.<br/>**Grouping**: Unresolved whether "107" counts individual fumaroles/vents along shared coal beds or independent subsurface combustion bodies. | Leigh Walden, *Montana Free Press* (Sept 2025) |
+| `2025–2026` | `2026-02` | Primary dataset not yet acquired | `unverified_primary_source_lead` | Reference to a February 2026 Montana DES / county mapping bulletin. | The review did not identify the document or acquire a matching GIS dataset. | Montana DES (`https://des.mt.gov/`) |
 
 ### Separate Hydrological Research Branch Note — Meredith (2016)
 - **Citation**: Meredith, E. (2016). *Coal aquifer contribution to streams in the Powder River Basin, Montana*. Journal of Hydrology / MBMG.

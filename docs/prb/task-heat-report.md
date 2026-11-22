@@ -57,8 +57,8 @@ Other passing checks cover initial/deep/surface conditions, pulse discontinuity,
 
 Latest covering command: `node --experimental-strip-types --test tests/prb/heat.test.js tests/prb/heat-ui.test.js` — **17 passed, 0 failed**. The task's earlier TypeScript/build attempts were blocked by concurrent MapLibre upgrade/default-export and integration NodeList typing errors outside these files; no heat typing error was reported. Those are historical module checkpoints; the final complete build and real-browser worker/run/download results belong in the integration report and shared work log.
 
-## Remaining scientific questions and next useful check
+## Model limits
 
-The model omits layered geology, variable properties, moisture and phase changes, oxygen, fluid transport, radiation, heat release, coal reactions, cracks, and lateral pathways. A shallow fixed deep boundary can distort results; a warning prompts comparison with a deeper model. Finer-grid results may still differ, especially near a discontinuity or shallow surface; expose grid sensitivity before interpreting temperatures.
+The model omits layered geology, variable properties, moisture and phase changes, oxygen, fluid transport, radiation, heat release, coal reactions, cracks, and lateral pathways. A shallow fixed deep boundary can distort results; a warning prompts comparison with a deeper model. Grid resolution affects the calculated values near discontinuities and shallow surfaces.
 
-Next scientific step is an independently specified case with measured material properties and boundary conditions, followed by sensitivity/domain checks. Adding combustion requires additional conservation equations, reaction/oxygen physics, independent benchmarks, and field validation. Neither agreement with the heat-equation reference nor a chosen displayed temperature establishes ignition or causal direction between surface and underground fires.
+Field validation would require measured material properties and boundary conditions. Combustion would require reaction and oxygen physics with separate validation. Neither agreement with the heat-equation reference nor a chosen displayed temperature establishes ignition or causal direction between surface and underground fires.
