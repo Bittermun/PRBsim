@@ -12,9 +12,11 @@ import { filterEvidence } from './data/select.ts';
 import { deriveTimelineBounds } from './data/dates.ts';
 import { EvidenceImportStore, type ImportOperationResult } from './data/import.ts';
 import type { FilterState, PRBEvidenceDataset } from './data/types.ts';
+import type { ObservationRelease } from './data/observation-publication.ts';
 
 import { BASEMAP_STYLES, initDemSource, createContourStyle } from './map/styles.ts';
 import { initEvidenceLayers, updateEvidenceLayers, setLayerGroupVisibility } from './map/layers.ts';
+import { mountPublicationLayer, updatePublicationLayer } from './map/publication-layer.ts';
 
 import { TimelineControl } from './ui/TimelineControl.ts';
 import { EvidencePanel, escapeHtml } from './ui/EvidencePanel.ts';
@@ -111,6 +113,12 @@ async function bootstrapPRBExplorer() {
 
     const modeBadge = document.getElementById('active-mode-notice');
     let workbench: ResearchWorkbench | undefined;
+    let publication: ObservationRelease | null = null;
+
+    function refreshPublicationMap(): void {
+        const selected = legend.getLayerState().showObservations ? publication : null;
+        updatePublicationLayer(map, selected, filterState.includeSynthetic);
+    }
 
     // Selection & Assessment State
     let activeSelection: AssessmentSelection | null = null;
@@ -221,6 +229,8 @@ async function bootstrapPRBExplorer() {
                 updateAssessment({ kind: 'coordinate', coordinate: emptyCoords }, false);
             }
         );
+        mountPublicationLayer(map);
+        refreshPublicationMap();
         applyLegendVisibility();
     };
 
@@ -230,6 +240,7 @@ async function bootstrapPRBExplorer() {
         currentFilteredData = filterEvidence(dataset, filterState);
         updateEvidenceLayers(map, currentFilteredData);
         evidencePanel.updateFilteredData(currentFilteredData);
+        refreshPublicationMap();
 
         // Reconcile assessment against newly filtered data
         if (activeSelection) {
@@ -269,9 +280,15 @@ async function bootstrapPRBExplorer() {
             } else if (localReal.length || dataset.surveys.some(record => record.id.startsWith('local:') && !record.isSynthetic)) {
                 modeBadge.textContent = `LOCAL EVIDENCE: ${activeLocal.length} unreviewed observations and ${activeLocalSurveys.length} unreviewed surveys in view. Bundled WFIGS footprint retained; underground inventory remains unverified.`;
                 modeBadge.className = 'status-badge status-unverified_report';
+            } else if (publication && !publication.release.isSynthetic) {
+                modeBadge.textContent = 'REAL MODE: WFIGS perimeter and unreviewed published observations';
+                modeBadge.className = 'status-badge status-unverified_report';
             } else {
                 modeBadge.textContent = `${REAL_MODE_BADGE_TEXT}${hiddenSynthetic ? ` · ${hiddenSynthetic} local synthetic reports quarantined` : ''}`;
                 modeBadge.className = 'status-badge status-field_confirmed';
+            }
+            if (publication && !publication.release.isSynthetic) {
+                modeBadge.textContent += ` · Published layer: ${publication.features.length} unreviewed observations`;
             }
         }
         workbench?.setEvidenceNote(packages
@@ -311,6 +328,16 @@ async function bootstrapPRBExplorer() {
         workbench = new ResearchWorkbench({
             trigger: toolsButton, store: importStore, onDatasetChange: replaceDataset,
             sampleUrl: new URL(`${baseUrl}data/prb/templates/synthetic-evidence-package.json`, location.href).toString(),
+            surveySampleUrl: new URL(`${baseUrl}data/prb/templates/synthetic-survey-comparison.json`, location.href).toString(),
+            getSurveyContext: () => ({
+                dataset, includeSynthetic: filterState.includeSynthetic, references: importStore.getSurveyImportReferences()
+            }),
+            publicationSampleUrl: new URL(`${baseUrl}data/prb/publications/demo/current.geojson`, location.href).toString(),
+            onPublication: release => {
+                publication = release;
+                refreshPublicationMap();
+                updateModeNotice();
+            },
             getCurrentBbox: () => {
                 const bounds = map.getBounds();
                 const west = bounds.getWest(), south = bounds.getSouth(), east = bounds.getEast(), north = bounds.getNorth();
@@ -331,6 +358,7 @@ async function bootstrapPRBExplorer() {
         setLayerGroupVisibility(map, 'perimeters', layerState.showPerimeters);
         setLayerGroupVisibility(map, 'surveys', layerState.showSurveys);
         setLayerGroupVisibility(map, 'observations', layerState.showObservations);
+        refreshPublicationMap();
     });
 
     legend.setOnPerspectiveToggle(isOblique => {

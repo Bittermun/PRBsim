@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "packageId": "prb-publication-demo",
+  "isSynthetic": true,
+  "description": "Fictional training records for the shared observation layer.",
+  "sources": [
+    {
+      "id": "demo-notebook",
+      "name": "Fictional field notebook",
+      "publisher": "PRBsim demonstration",
+      "retrievalDate": "2026-11-23",
+      "url": "https://example.invalid/prbsim-publication",
+      "license": "CC0-1.0",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Invented locations",
+      "limitations": "Synthetic data for testing read-only publication and reload behavior.",
+      "isSynthetic": true
+    }
+  ],
+  "sites": [
+    {
+      "id": "practice-area",
+      "name": "Invented survey area",
+      "coalSeam": "Unknown",
+      "groupingUncertainty": "unresolved_multi_vent",
+      "groupingNotes": "Fictional practice site.",
+      "boundaryGeometry": null,
+      "isSynthetic": true
+    }
+  ],
+  "surveys": [],
+  "revision": 1,
+  "observations": [
+    {
+      "id": "practice-a",
+      "siteId": "practice-area",
+      "label": "Practice observation A",
+      "observationDate": "2024-08-22",
+      "datePrecision": "day",
+      "status": "unverified_report",
+      "evidenceMethods": [
+        "historical_record"
+      ],
+      "accuracyMeters": 30,
+      "sourceId": "demo-notebook",
+      "notes": "Fictional report for release demonstration.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.113,
+          45.022
+        ]
+      }
+    },
+    {
+      "id": "practice-b",
+      "siteId": "practice-area",
+      "label": "Practice observation B",
+      "observationDate": "2024-08-22",
+      "datePrecision": "day",
+      "status": "unverified_report",
+      "evidenceMethods": [
+        "historical_record"
+      ],
+      "accuracyMeters": 30,
+      "sourceId": "demo-notebook",
+      "notes": "Fictional report for release demonstration.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.051,
+          45.028
+        ]
+      }
+    }
+  ]
+}

@@ -22,6 +22,7 @@
     "@turf/boolean-point-in-polygon": "^7.4.0",
     "@turf/point-to-polygon-distance": "^7.4.0",
     "maplibre-contour": "^0.1.0",
-    "maplibre-gl": "^6.15.0"
+    "maplibre-gl": "^6.15.0",
+    "polyclip-ts": "0.16.8"
   }
 }

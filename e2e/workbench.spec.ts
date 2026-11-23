@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Download } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 function localPackage(revision = 1, surveyOnly = false) {
     const polygon = { type: 'Polygon', coordinates: [[[-106.3, 45], [-106.2, 45], [-106.2, 45.1], [-106.3, 45.1], [-106.3, 45]]] };
@@ -40,7 +41,7 @@ test('research tools dialog supports tabs, Escape and returning keyboard focus',
     await page.goto('/');
     const dialog = await openTools(page);
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('tab')).toHaveCount(3);
+    await expect(dialog.getByRole('tab')).toHaveCount(5);
     await expect(dialog.getByRole('heading', { name: 'Local evidence imports' })).toBeVisible();
     await dialog.getByRole('tab', { name: 'Satellite scenes', exact: true }).focus();
     await page.keyboard.press('ArrowRight');
@@ -54,6 +55,103 @@ test('research tools dialog supports tabs, Escape and returning keyboard focus',
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
     await expect(page.getByRole('button', { name: 'Research tools', exact: true })).toBeFocused();
+});
+
+test('survey comparison preserves coverage, quarantine and exact revision through workbench exports', async ({ page }, testInfo) => {
+    await page.goto('/');
+    let dialog = await openTools(page);
+    await dialog.getByRole('tab', { name: 'Survey comparison', exact: true }).click();
+    const [sample] = await Promise.all([page.waitForEvent('download'),
+        dialog.getByRole('link', { name: 'Download the synthetic two-survey example' }).click()]);
+    const original = await contents(sample);
+    const pkg = JSON.parse(original);
+    await dialog.getByRole('tab', { name: 'Imports', exact: true }).click();
+    await dialog.locator('input[type="file"]').setInputFiles({
+        name: sample.suggestedFilename(), mimeType: 'application/json', buffer: Buffer.from(original)
+    });
+    await expect(dialog.locator('[data-import-status]')).toContainText('Preview ready');
+    await expect(dialog.getByRole('region', { name: 'Package preview' })).toContainText('2 survey(s)');
+    await dialog.getByRole('button', { name: 'Apply previewed package' }).click();
+    await expect(dialog.locator('[data-import-status]')).toContainText('Added local package');
+    await expect(dialog.locator('[data-import-history]')).toContainText('synthetic-survey-comparison, revision 1');
+
+    const openReport = () => dialog.getByRole('tab', { name: 'Survey comparison', exact: true }).click();
+    const reopenInSyntheticMode = async () => {
+        await dialog.getByRole('button', { name: 'Close research tools' }).click();
+        await page.locator('#toggle-synthetic-fixtures').check();
+        dialog = await openTools(page);
+        await openReport();
+    };
+    const selectBaseline = () => dialog.getByLabel('Baseline survey').selectOption('local:synthetic-survey-comparison:record:baseline');
+    const selectFollowup = () => dialog.getByLabel('Follow-up survey').selectOption('local:synthetic-survey-comparison:record:followup');
+    const exportJson = async () => {
+        const [download] = await Promise.all([page.waitForEvent('download'),
+            dialog.getByRole('button', { name: 'Download comparison JSON' }).click()]);
+        return { download, report: JSON.parse(await contents(download)) };
+    };
+    const checkCoverage = async () => {
+        await expect(dialog.locator('[data-region="both"]')).toContainText('Survey reported no thermal anomaly');
+        await expect(dialog.locator('[data-region="baseline_only"]')).toContainText('Unknown (outside the reported footprint)');
+        await expect(dialog.locator('[data-region="followup_only"] td').first()).toContainText('Unknown');
+        await expect(dialog.locator('.survey-region')).toHaveCount(3);
+    };
+
+    await openReport();
+    await expect(dialog.getByLabel('Baseline survey').locator('option')).toHaveCount(1);
+    await expect(dialog.getByRole('button', { name: 'Download comparison JSON' })).toBeDisabled();
+    await reopenInSyntheticMode();
+    await selectBaseline();
+    await expect(dialog.getByText('Comparison pending', { exact: false })).toBeVisible();
+    const pending = (await exportJson()).report;
+    expect(pending.status).toBe('comparison_pending');
+    expect(pending.regions[0].followup).toBe('pending');
+    await selectFollowup();
+    await checkCoverage();
+    const initial = (await exportJson()).report;
+    expect(initial.isSynthetic).toBe(true);
+    expect(initial.baseline.reviewStatus).toBe('local_unreviewed');
+    expect(initial.baseline.originalPackage).toEqual({
+        packageId: pkg.packageId, revision: 1, sha256: createHash('sha256').update(original).digest('hex')
+    });
+
+    await page.reload();
+    dialog = await openTools(page);
+    await openReport();
+    await expect(dialog.getByLabel('Baseline survey').locator('option')).toHaveCount(1);
+    await reopenInSyntheticMode();
+    await selectBaseline();
+    await selectFollowup();
+    await checkCoverage();
+    const replay = await exportJson();
+    expect(replay.report).toEqual(initial);
+    await replay.download.saveAs(testInfo.outputPath('synthetic-survey-comparison.json'));
+    const [printed] = await Promise.all([page.waitForEvent('download'),
+        dialog.getByRole('button', { name: 'Download printable report' }).click()]);
+    const html = await contents(printed);
+    expect(html).toContain('Synthetic example.');
+    expect(html).toContain('Unknown (outside the reported footprint)');
+    expect(html).toContain(initial.baseline.originalPackage.sha256);
+    await printed.saveAs(testInfo.outputPath('synthetic-survey-report.html'));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(dialog.getByRole('table', { name: 'Coverage and reported results' })).toBeVisible();
+    expect(await dialog.locator('.workbench-body').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await dialog.getByRole('table', { name: 'Coverage and reported results' }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('synthetic-survey-mobile.png') });
+
+    const revised = structuredClone(pkg);
+    revised.revision = 2;
+    revised.surveys[1].notes += ' Fictional revision for replay verification.';
+    await dialog.getByRole('tab', { name: 'Imports', exact: true }).click();
+    await preview(page, revised);
+    await dialog.getByRole('button', { name: 'Apply previewed package' }).click();
+    await expect(dialog.locator('[data-import-history]')).toContainText('synthetic-survey-comparison, revision 2');
+    await openReport();
+    const final = (await exportJson()).report;
+    expect(final.followup.record.id).toBe(initial.followup.record.id);
+    expect(final.followup.source.id).toBe(initial.followup.source.id);
+    expect(final.followup.originalPackage.revision).toBe(2);
+    expect(final.followup.originalPackage.sha256).not.toBe(initial.followup.originalPackage.sha256);
+    expect(final.regions).toEqual(initial.regions);
 });
 
 test('local evidence preview, revisions, map inspection, exports, reload and removal stay consistent', async ({ page }) => {

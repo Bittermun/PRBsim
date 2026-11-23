@@ -87,3 +87,100 @@ host. Selected tests exercised the existing heat solver and local import and
 export paths. The USGS Collection 2 documentation describes a surface-temperature
 product with cloud, emissivity, missing-data, and target-size limitations.
 [USGS Collection 2 surface temperature](https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-temperature)
+
+## 2026-11-22 — Montana DES bulletin and survey intake check
+
+Located the February 2026 Montana DES bulletin identified in L7. It reports
+that a subcontractor completed thermal mapping of the Short Draw and Remington
+burn scars under a grant awarded to Custer County DES in 2022. Its figure of
+more than 1,300 mapped active seams covers eastern Montana. Flight footprints,
+survey dates, counting definitions, site records, and pre-fire coverage remain
+outstanding. [Montana DES bulletin](https://prod-des.mt.gov/Mitigation/Mitigation-Minute-Feb-2026.pdf)
+
+Custer County's engineering solicitation covers coal seam mitigation in four
+counties. The county's mitigation specialist description calls for geospatial
+field records, photo metadata, and an audit trail for contractor work. These
+records identify an opportunity to ask for a dated survey footprint and a
+repeat survey for one treatment site. Access to a site record and a field
+comparison are pending. [County solicitation](https://custercountymt.gov/news-announcements/coal-seam-fire-mitigation/) ·
+[Mitigation specialist description](https://custercountymt.gov/wp-content/uploads/2026/03/Coal-Seam-Mitigation-Specialist.pdf)
+
+On Node 24.12.0 at `f198949`, the import, assessment import provenance, and
+local export tests passed 33 of 33 checks. One Chromium workbench check passed
+for a survey-only import beyond the incident dates, including visibility
+after reload. The checks used fixture data and cover software behavior.
+## 2026-11-22 — Survey comparison and public evidence checks
+
+Added the survey comparison workbench (A4). It uses existing JSON intake and
+preserves the active package revision and original bytes' SHA-256 in the report.
+In the fictional example, area A has results on both dates, B has unknown
+follow-up status, and C has a follow-up result only. One survey produces a
+baseline with comparison pending. The HTML and JSON exports report scope and
+review status. Field usability still depends on effective coverage, acquisition
+conditions, and the original survey records. [Format and replay](local-evidence-format.md#compare-reported-survey-footprints)
+
+Verification at base commit `f198949` with the working-tree changes, Node
+24.12.0 and Chromium/SwiftShader. `npm test` passed 114 tests, `npm run build`
+passed, and `npm run test:e2e` passed 25 tests with two opt-in live tests
+skipped. The new workbench test applied the fixture, checked synthetic-mode
+quarantine and all three coverage regions, compared the JSON after reload, checked
+the printable output, and confirmed stable IDs and a changed checksum at the
+next revision. Unit tests covered an interior gap and edge-only contact.
+
+The Richard Spring study reproduced 171,130.09 acres within Rosebud County
+using the federal perimeter and Census boundary. The state and federal cause
+records use different levels of detail. The county's 128,403-acre aggregate
+needs an incident list and acreage definition before reconciliation. [Source comparison and calculation](richard-spring-case.md)
+
+The Kanderfirn drone validation raster yielded 7,149 numeric cells and 5,139
+unknown cells in a selected 128 × 96 window. Re-rasterizing the exported
+GeoJSON reproduced all 12,288 mask classifications. The thermal result is a
+coverage example. [Source, figure, and replay](thermal-coverage-example.md)
+
+A separate Landsat check looked at a 64 × 64 window inside the Richard Spring
+footprint at 106.477676° W, 45.716311° N. All 4,096 August 4 pixels passed a
+screen for finite recorded temperature and the Landsat QA flags for fill,
+cloud, shadow, snow, and water. On September 5, all 4,096 pixels were flagged
+cloud or dilated cloud even though temperature values were present. An
+alternative August 29 image had 4,090 cells pass the same preliminary screen.
+The screen establishes data availability for this window. It leaves surface
+comparability, matched reference areas, and any interpretation of anomalies
+for a separate study. [August 4 scene](https://planetarycomputer.microsoft.com/api/stac/v1/collections/landsat-c2-l2/items/LC08_L2SP_036028_20210804_02_T1) · [September 5 scene](https://planetarycomputer.microsoft.com/api/stac/v1/collections/landsat-c2-l2/items/LC08_L2SP_036028_20210905_02_T1) · [August 29 scene](https://planetarycomputer.microsoft.com/api/stac/v1/collections/landsat-c2-l2/items/LC08_L2SP_035028_20210829_02_T1) · [USGS product guide](https://www.usgs.gov/landsat-missions/landsat-collection-2-surface-temperature)
+
+## 2026-11-23 — Two-client publication and matched surface temperature
+
+Implemented read-only dated GeoJSON publication (A5). The publisher reuses the
+evidence import validator, stages complete bytes before replacing `current`,
+preserves the prior archive, and records source license, review status, stable
+record IDs, input SHA-256, and change reasons. PRBsim displays the current release
+as a purple overlay. Synthetic observations still require the synthetic toggle.
+Unreviewed published observations have a separate layer identity and stay out
+of the local evidence assessment. [Publication replay](observation-publication.md)
+
+Chromium and QGIS 3.44.16 with the OGR provider both requested revisions 1 and 2
+from the same loopback HTTP server. The first had two fictional points. After
+PRBsim's **Reload layer** and `QgsVectorLayer.reload()` on the existing QGIS layer,
+both clients showed the correction to `practice-a` and removed `practice-b`.
+Each client could still read the first immutable release. The test checked the
+request user agents and both response hashes, exact QGIS coordinates and
+attributes, actual browser map pixels, and the visible withdrawal reason. A
+missing change reason and an attempted rollback left the current release intact.
+The QGIS render-timer settings are documented and the check exercised the
+data reload operation directly. The replay writes `publication-verification.json` to the test output.
+
+At base commit `f198949` with these working-tree changes, Node 24.12.0 unit
+tests passed 114 of 114 and the production build passed. All 28 Playwright
+checks passed in Chromium with SwiftShader, including the live cartography
+and Earth Search probes. The publication test used Docker QGIS as its second
+consumer. The server was local, and the tested releases were synthetic.
+Field publication and use by a second organization remain unobserved.
+
+For Richard Spring, the outside reference ring and interior supplied **14,838**
+unique matched Landsat pairs from August 4 and 29, 2021 (L23). The temperature
+change averaged −13.13°C inside and −15.43°C in the matched ring. The paired
+difference was +2.29°C. An independent read of the paired CSV checked coordinates
+for reuse, distance and all four covariate thresholds, the four ST_QA values
+per row, and the reported mean. The script and artifacts preserve which cells
+passed screening and which locations were matched. This comparison concerns
+daytime surface temperature. Geology, complete fire history in the reference
+ring, and underground combustion were outside the recorded inputs. [Sources and replay](richard-spring-case.md#matched-landsat-surface-temperature)

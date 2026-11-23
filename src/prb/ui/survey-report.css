@@ -1,0 +1,42 @@
+.survey-selectors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.survey-selectors select {
+    width: 100%;
+    min-width: 0;
+    padding: 9px;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    font: inherit;
+    border: 1px solid var(--border-strong);
+    border-radius: 5px;
+}
+.survey-report { overflow-wrap: anywhere; }
+.survey-report .survey-dates, .survey-report .survey-question { font-weight: 600; }
+.survey-map { width: 100%; height: auto; display: block; background: #f2f6f9; border: 1px solid #cad6df; border-radius: 5px; }
+.survey-region, .survey-swatch { fill: var(--region-color); background: var(--region-color); }
+.survey-region { stroke: #223c4b; stroke-width: 1.4; fill-rule: evenodd; }
+.survey-swatch { display: inline-block; width: .8em; height: .8em; margin-right: .5em; border: 1px solid #223c4b; }
+.survey-region.both, .survey-swatch.both { --region-color: #7caed1; }
+.survey-region.baseline_only, .survey-swatch.baseline_only { --region-color: #efc071; }
+.survey-region.followup_only, .survey-swatch.followup_only { --region-color: #87c5ad; }
+.survey-report table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: .92rem; }
+.survey-report th, .survey-report td { text-align: left; vertical-align: top; border: 1px solid #aebdc8; padding: 7px; }
+.survey-source { margin-top: 16px; border-top: 1px solid #aebdc8; }
+.survey-report code { font-size: .86em; }
+[data-survey-notice]:empty { display: none; }
+@media (max-width: 540px) {
+    .survey-selectors { grid-template-columns: minmax(0, 1fr); }
+    .survey-report table { table-layout: fixed; }
+}
+@media print {
+    .survey-report { font-size: 10pt; line-height: 1.35; }
+    .survey-report h2 { margin: 0 0 .6em; }
+    .survey-report h3 { margin: .7em 0 .4em; }
+    .survey-report p { margin: .45em 0; }
+    .survey-map { max-height: 1.7in; }
+    .survey-map, .survey-swatch { print-color-adjust: exact; }
+    .survey-report table { font-size: 10pt; margin: .8em 0; }
+    .survey-report th, .survey-report td { padding: 5px; }
+    .survey-report tr { break-inside: avoid; }
+    .survey-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(2.8in, 1fr)); gap: .2in; }
+    .survey-source { break-inside: avoid; }
+}

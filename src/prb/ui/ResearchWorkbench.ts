@@ -4,6 +4,9 @@ import type { SatelliteBbox } from '../data/satellite.ts';
 import { ImportPanel } from './ImportPanel.ts';
 import { SatellitePanel } from './SatellitePanel.ts';
 import { HeatLab } from './HeatLab.ts';
+import { SurveyComparisonPanel, type SurveyContext } from './SurveyComparisonPanel.ts';
+import { PublishedObservationPanel } from './PublishedObservationPanel.ts';
+import type { ObservationRelease } from '../data/observation-publication.ts';
 import './workbench.css';
 
 interface ResearchWorkbenchOptions {
@@ -12,6 +15,10 @@ interface ResearchWorkbenchOptions {
     onDatasetChange: (dataset: PRBEvidenceDataset, result: ImportOperationResult) => void;
     getCurrentBbox: () => SatelliteBbox | null;
     sampleUrl: string;
+    surveySampleUrl: string;
+    getSurveyContext: () => SurveyContext;
+    publicationSampleUrl: string;
+    onPublication: (release: ObservationRelease) => void;
     onOpen?: () => void;
 }
 
@@ -21,6 +28,8 @@ export class ResearchWorkbench {
     private imports: ImportPanel;
     private satellite: SatellitePanel;
     private heat: HeatLab;
+    private surveys: SurveyComparisonPanel;
+    private publication: PublishedObservationPanel;
     private active = 0;
     private controller = new AbortController();
 
@@ -38,11 +47,15 @@ export class ResearchWorkbench {
                 <button type="button" role="tab" id="tool-tab-imports" aria-controls="tool-panel-imports" aria-selected="true" tabindex="0">Imports</button>
                 <button type="button" role="tab" id="tool-tab-satellite" aria-controls="tool-panel-satellite" aria-selected="false" tabindex="-1">Satellite scenes</button>
                 <button type="button" role="tab" id="tool-tab-heat" aria-controls="tool-panel-heat" aria-selected="false" tabindex="-1">Heat lab</button>
+                <button type="button" role="tab" id="tool-tab-surveys" aria-controls="tool-panel-surveys" aria-selected="false" tabindex="-1">Survey comparison</button>
+                <button type="button" role="tab" id="tool-tab-publications" aria-controls="tool-panel-publications" aria-selected="false" tabindex="-1">Published observations</button>
             </div>
             <div class="workbench-body">
                 <section role="tabpanel" id="tool-panel-imports" aria-labelledby="tool-tab-imports" tabindex="0"><div data-tool-imports></div><p data-workbench-evidence-note class="tool-note" role="status"></p></section>
                 <section role="tabpanel" id="tool-panel-satellite" aria-labelledby="tool-tab-satellite" tabindex="0" hidden><div data-tool-satellite></div></section>
                 <section role="tabpanel" id="tool-panel-heat" aria-labelledby="tool-tab-heat" tabindex="0" hidden><div data-tool-heat></div></section>
+                <section role="tabpanel" id="tool-panel-surveys" aria-labelledby="tool-tab-surveys" tabindex="0" hidden><div data-tool-surveys></div></section>
+                <section role="tabpanel" id="tool-panel-publications" aria-labelledby="tool-tab-publications" tabindex="0" hidden><div data-tool-publications></div></section>
             </div>`;
         document.body.append(this.dialog);
         this.imports = new ImportPanel(this.dialog.querySelector('[data-tool-imports]')!, {
@@ -52,12 +65,17 @@ export class ResearchWorkbench {
             getCurrentBbox: options.getCurrentBbox
         });
         this.heat = new HeatLab(this.dialog.querySelector<HTMLElement>('[data-tool-heat]')!);
+        this.surveys = new SurveyComparisonPanel(this.dialog.querySelector('[data-tool-surveys]')!,
+            options.getSurveyContext, options.surveySampleUrl);
+        this.publication = new PublishedObservationPanel(this.dialog.querySelector('[data-tool-publications]')!,
+            options.publicationSampleUrl, options.onPublication);
         const events = { signal: this.controller.signal };
         options.trigger.addEventListener('click', () => this.open(), events);
         this.dialog.querySelector('.workbench-close')!.addEventListener('click', () => this.dialog.close(), events);
         this.dialog.addEventListener('close', () => {
             this.satellite.cancel();
             this.heat.cancel();
+            this.publication.cancel();
             options.trigger.focus();
         }, events);
         const tabs = Array.from(this.dialog.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
@@ -81,6 +99,7 @@ export class ResearchWorkbench {
     open(): void {
         this.options.onOpen?.();
         this.imports.refresh();
+        if (this.active === 3) this.surveys.refresh();
         if (!this.dialog.open) this.dialog.showModal();
         this.dialog.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus();
     }
@@ -93,8 +112,10 @@ export class ResearchWorkbench {
         if (index !== this.active) {
             if (this.active === 1) this.satellite.cancel();
             if (this.active === 2) this.heat.cancel();
+            if (this.active === 4) this.publication.cancel();
         }
         this.active = index;
+        if (index === 3) this.surveys.refresh();
         this.dialog.querySelectorAll<HTMLButtonElement>('[role="tab"]').forEach((tab, i) => {
             tab.setAttribute('aria-selected', String(i === index));
             tab.tabIndex = i === index ? 0 : -1;
@@ -107,6 +128,8 @@ export class ResearchWorkbench {
         this.imports.destroy();
         this.satellite.destroy();
         this.heat.destroy();
+        this.surveys.destroy();
+        this.publication.destroy();
         this.dialog.remove();
     }
 }

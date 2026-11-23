@@ -1,0 +1,98 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "practice-a",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.113,
+          45.022
+        ]
+      },
+      "properties": {
+        "recordId": "practice-a",
+        "siteId": "practice-area",
+        "label": "Practice observation A",
+        "observationDate": "2024-08-22",
+        "datePrecision": "day",
+        "endDate": null,
+        "lastObservedDate": null,
+        "accuracyMeters": 30,
+        "sourceId": "demo-notebook",
+        "sourceName": "Fictional field notebook",
+        "publisher": "PRBsim demonstration",
+        "sourceUrl": "https://example.invalid/prbsim-publication",
+        "sourceRetrievedOn": "2026-11-23",
+        "sourceLimitations": "Synthetic data for testing read-only publication and reload behavior.",
+        "license": "CC0-1.0",
+        "reportedStatus": "unverified_report",
+        "evidenceMethods": "historical_record",
+        "notes": "Fictional report for release demonstration.",
+        "reviewStatus": "synthetic",
+        "isSynthetic": true,
+        "layerId": "prb-publication-demo",
+        "revision": 1,
+        "originalPackageSha256": "b50e1d0747beca8ef063ebd22f0815645b4926438f61f6ab47498572876a287f"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "practice-b",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.051,
+          45.028
+        ]
+      },
+      "properties": {
+        "recordId": "practice-b",
+        "siteId": "practice-area",
+        "label": "Practice observation B",
+        "observationDate": "2024-08-22",
+        "datePrecision": "day",
+        "endDate": null,
+        "lastObservedDate": null,
+        "accuracyMeters": 30,
+        "sourceId": "demo-notebook",
+        "sourceName": "Fictional field notebook",
+        "publisher": "PRBsim demonstration",
+        "sourceUrl": "https://example.invalid/prbsim-publication",
+        "sourceRetrievedOn": "2026-11-23",
+        "sourceLimitations": "Synthetic data for testing read-only publication and reload behavior.",
+        "license": "CC0-1.0",
+        "reportedStatus": "unverified_report",
+        "evidenceMethods": "historical_record",
+        "notes": "Fictional report for release demonstration.",
+        "reviewStatus": "synthetic",
+        "isSynthetic": true,
+        "layerId": "prb-publication-demo",
+        "revision": 1,
+        "originalPackageSha256": "b50e1d0747beca8ef063ebd22f0815645b4926438f61f6ab47498572876a287f"
+      }
+    }
+  ],
+  "release": {
+    "schemaVersion": 1,
+    "layerId": "prb-publication-demo",
+    "revision": 1,
+    "releasedOn": "2026-11-22",
+    "isSynthetic": true,
+    "originalPackageSha256": "b50e1d0747beca8ef063ebd22f0815645b4926438f61f6ab47498572876a287f",
+    "changes": [
+      {
+        "recordId": "practice-a",
+        "action": "added",
+        "reason": "First appearance in this layer."
+      },
+      {
+        "recordId": "practice-b",
+        "action": "added",
+        "reason": "First appearance in this layer."
+      }
+    ],
+    "previous": null
+  }
+}

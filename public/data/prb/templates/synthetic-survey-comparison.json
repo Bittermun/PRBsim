@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "packageId": "synthetic-survey-comparison",
+  "revision": 1,
+  "isSynthetic": true,
+  "description": "Fictional example. From west to east: B (baseline only), A (both), C (follow-up only).",
+  "sources": [
+    {
+      "id": "baseline-flight",
+      "name": "Fictional baseline flight",
+      "publisher": "PRBsim demonstration",
+      "retrievalDate": "2026-11-22",
+      "url": "https://example.invalid/prbsim/survey-baseline",
+      "license": "CC0-1.0, fictional training data",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Invented coordinates",
+      "limitations": "Fictional survey, flight conditions, footprint and results.",
+      "isSynthetic": true
+    },
+    {
+      "id": "followup-flight",
+      "name": "Fictional follow-up flight",
+      "publisher": "PRBsim demonstration",
+      "retrievalDate": "2026-11-22",
+      "url": "https://example.invalid/prbsim/survey-followup",
+      "license": "CC0-1.0, fictional training data",
+      "crs": "EPSG:4326",
+      "spatialAccuracy": "Invented coordinates",
+      "limitations": "Fictional survey, flight conditions, footprint and results.",
+      "isSynthetic": true
+    }
+  ],
+  "sites": [
+    {
+      "id": "practice-site",
+      "name": "Fictional survey site",
+      "coalSeam": "Unknown",
+      "groupingUncertainty": "unresolved_multi_vent",
+      "groupingNotes": "The two hotspots are separate observations in the same training site.",
+      "boundaryGeometry": null,
+      "isSynthetic": true
+    }
+  ],
+  "observations": [
+    {
+      "id": "hotspot-a",
+      "siteId": "practice-site",
+      "label": "Fictional hotspot in A",
+      "observationDate": "2026-03-10",
+      "datePrecision": "day",
+      "status": "sensor_detection",
+      "evidenceMethods": ["aerial_ir"],
+      "accuracyMeters": null,
+      "sourceId": "baseline-flight",
+      "notes": "Invented anomaly at the baseline.",
+      "isSynthetic": true,
+      "geometry": { "type": "Point", "coordinates": [-106.29, 45.005] }
+    },
+    {
+      "id": "hotspot-b",
+      "siteId": "practice-site",
+      "label": "Fictional hotspot in B",
+      "observationDate": "2026-03-10",
+      "datePrecision": "day",
+      "status": "sensor_detection",
+      "evidenceMethods": ["aerial_ir"],
+      "accuracyMeters": null,
+      "sourceId": "baseline-flight",
+      "notes": "Invented anomaly outside the follow-up footprint.",
+      "isSynthetic": true,
+      "geometry": { "type": "Point", "coordinates": [-106.31, 45.005] }
+    }
+  ],
+  "surveys": [
+    {
+      "id": "baseline",
+      "surveyName": "Baseline flight",
+      "surveyDate": "2026-03-10",
+      "method": "Fictional aerial infrared, pre-dawn, dry ground and clear sky",
+      "result": "anomalies_detected",
+      "sourceId": "baseline-flight",
+      "notes": "The baseline covers B (west) and A (middle), with one reported hotspot in each.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-106.32, 45], [-106.28, 45], [-106.28, 45.01], [-106.32, 45.01], [-106.32, 45]]]
+      }
+    },
+    {
+      "id": "followup",
+      "surveyName": "Follow-up flight",
+      "surveyDate": "2026-04-14",
+      "method": "Fictional aerial infrared, pre-dawn, dry ground and clear sky",
+      "result": "no_thermal_anomaly_detected",
+      "sourceId": "followup-flight",
+      "notes": "The follow-up covers A (middle) and C (east). No thermal anomaly was reported within that footprint under the stated conditions.",
+      "isSynthetic": true,
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-106.3, 45], [-106.26, 45], [-106.26, 45.01], [-106.3, 45.01], [-106.3, 45]]]
+      }
+    }
+  ]
+}

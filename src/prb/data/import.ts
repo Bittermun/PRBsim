@@ -61,6 +61,13 @@ export interface ImportRevision {
     originalBase64: string;
 }
 
+export interface SurveyImportReference extends Pick<ImportRevision, 'packageId' | 'revision' | 'sha256'> {
+    surveyName: string;
+    surveyNotes: string;
+    sourceName: string;
+    sourceLimitations: string;
+}
+
 export interface ImportOperationResult {
     ok: boolean;
     dataset: PRBEvidenceDataset;
@@ -152,7 +159,7 @@ function inspectGeometry(value: unknown, path: string, budget: { count: number }
     else (geom.coordinates as unknown[][]).forEach(poly => poly.forEach(ring));
 }
 
-function inspectPackage(value: unknown): EvidenceImportPackage {
+export function validateEvidencePackage(value: unknown, { allowEmpty = false } = {}): EvidenceImportPackage {
     const pkg = object(value, 'package');
     keys(pkg, ['schemaVersion', 'packageId', 'revision', 'isSynthetic', 'description', 'sources', 'sites', 'observations', 'surveys'], 'package');
     if (pkg.schemaVersion !== 1) fail('schemaVersion', 'Only evidence package schemaVersion 1 is supported.');
@@ -166,7 +173,7 @@ function inspectPackage(value: unknown): EvidenceImportPackage {
     const typed = pkg as unknown as EvidenceImportPackage;
     if (typed.sources.length === 0 || typed.sources.length > 100) fail('sources', 'Declare 1–100 sources with attribution metadata.');
     if (typed.sites.length + typed.observations.length + typed.surveys.length > MAX_RECORDS) fail('package', 'Package exceeds the 5,000-record limit.');
-    if (typed.observations.length + typed.surveys.length === 0) fail('package', 'Include at least one observation or survey.');
+    if (!allowEmpty && typed.observations.length + typed.surveys.length === 0) fail('package', 'Include at least one observation or survey.');
 
     typed.sources.forEach((value, index) => {
         const path = `sources[${index}]`;
@@ -289,7 +296,7 @@ async function prepare(input: string | Uint8Array | ArrayBuffer): Promise<Prepar
     let parsed: unknown;
     try { parsed = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
     catch { fail('package', 'File is not valid UTF-8 JSON.'); }
-    const pkg = inspectPackage(parsed);
+    const pkg = validateEvidencePackage(parsed);
     const sha256 = await hashBytes(bytes);
     return { normalized: normalize(pkg, sha256), bytes, sha256 };
 }
@@ -345,6 +352,22 @@ export class EvidenceImportStore {
     getDataset(): PRBEvidenceDataset { return clone(this.dataset); }
     getHistory(): ImportRevision[] { return this.versions.map(version => clone(version.revision)); }
     getPersistence(): ImportPersistence { return { ...this.persistence }; }
+
+    getSurveyImportReferences(): ReadonlyMap<string, SurveyImportReference> {
+        const references = new Map<string, SurveyImportReference>();
+        for (const { normalized, revision: { packageId, revision, sha256 } } of activeVersions(this.versions).values()) {
+            const sources = new Map(normalized.original.sources.map(source => [source.id, source]));
+            normalized.surveys.forEach((survey, index) => {
+                const original = normalized.original.surveys[index];
+                const source = sources.get(original.sourceId)!;
+                references.set(survey.id, {
+                    packageId, revision, sha256, surveyName: original.surveyName, surveyNotes: original.notes,
+                    sourceName: source.name, sourceLimitations: source.limitations
+                });
+            });
+        }
+        return references;
+    }
 
     private exclusive<T>(operation: () => Promise<T>): Promise<T> {
         const result = this.pending.then(operation, operation);

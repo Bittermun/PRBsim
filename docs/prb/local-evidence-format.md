@@ -49,3 +49,11 @@ Before saving, the importer also checks whether another browser session changed 
 Bounds: 2 MiB per UTF-8 file, 5,000 records and 100,000 coordinate positions per package, 50 original revisions and 8 MiB original bytes across local history. Browser quota can be lower. These bounds keep the static explorer responsive; larger inventories require a separate preprocessing and review workflow.
 
 The first version has no attachment transfer, instrument/calibration schema, shared editing, source review queue, direct service synchronization, or verified publication workflow. Preserve those original materials separately until their import/review requirements are implemented.
+
+## Compare reported survey footprints
+
+Open **Research tools → Survey comparison**. Select an applied survey as the baseline. Select a later survey to see the overlap and the parts covered on one date only. One survey produces a dated baseline with the comparison pending. An area outside a date's reported footprint has unknown status on that date. The reported result summarizes the source survey. Use the method and notes to assess the conditions and the limits of comparison.
+
+The tab uses the selected surveys across all dates and honors the timeline's synthetic toggle. An active comparison uses either two real surveys or two synthetic surveys. The printable HTML and comparison JSON include the survey and source IDs, source attribution, review status, and the active import's revision and original SHA-256. Original bytes remain available in the Imports history. The comparison overlays local WGS84 polygons and requires footprints that fit within 180 degrees of longitude.
+
+To try the [fictional pair](../../public/data/prb/templates/synthetic-survey-comparison.json), download and apply it in **Imports**, enable **Synthetic Validation Fixtures** on the timeline, then choose the March 10 and April 14 flights in **Survey comparison**. Area A was surveyed twice. Area B had a reported baseline hotspot and missed the follow-up. Area C has a follow-up result only.

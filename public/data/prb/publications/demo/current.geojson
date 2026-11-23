@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "practice-a",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.092,
+          45.039
+        ]
+      },
+      "properties": {
+        "recordId": "practice-a",
+        "siteId": "practice-area",
+        "label": "Practice observation A, corrected",
+        "observationDate": "2024-08-23",
+        "datePrecision": "day",
+        "endDate": null,
+        "lastObservedDate": null,
+        "accuracyMeters": 15,
+        "sourceId": "demo-notebook",
+        "sourceName": "Fictional field notebook",
+        "publisher": "PRBsim demonstration",
+        "sourceUrl": "https://example.invalid/prbsim-publication",
+        "sourceRetrievedOn": "2026-11-23",
+        "sourceLimitations": "Synthetic data for testing read-only publication and reload behavior.",
+        "license": "CC0-1.0",
+        "reportedStatus": "unverified_report",
+        "evidenceMethods": "historical_record",
+        "notes": "Fictional report for release demonstration.",
+        "reviewStatus": "synthetic",
+        "isSynthetic": true,
+        "layerId": "prb-publication-demo",
+        "revision": 2,
+        "originalPackageSha256": "9a489a84f046e16349455fd1e7d2b7e99432848011a40f76491c9471db08c33c"
+      }
+    }
+  ],
+  "release": {
+    "schemaVersion": 1,
+    "layerId": "prb-publication-demo",
+    "revision": 2,
+    "releasedOn": "2026-11-23",
+    "isSynthetic": true,
+    "originalPackageSha256": "9a489a84f046e16349455fd1e7d2b7e99432848011a40f76491c9471db08c33c",
+    "changes": [
+      {
+        "recordId": "practice-a",
+        "action": "corrected",
+        "reason": "Updated coordinates, observation date, and positional uncertainty from the fictional notebook correction."
+      },
+      {
+        "recordId": "practice-b",
+        "action": "withdrawn",
+        "reason": "The fictional source withdrew this record after reviewing its entry."
+      }
+    ],
+    "previous": {
+      "revision": 1,
+      "sha256": "197cda756dd0a8dc143f458bd8b08185d6db34c387c8218e63fac8a25925a05b"
+    }
+  }
+}
