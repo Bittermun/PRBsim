@@ -1,18 +1,16 @@
-# Task 2: local evidence intake handoff
+# Local evidence intake checkpoint
 
-Implementation/check date: 2026-10-20. References: A2, B2, B4, L5, L7–L9. This is a functioning local file-intake module and standalone panel, with deterministic validation/storage tests. It is not direct ODK API integration, acquisition of a primary underground inventory, independent source verification, or scientific validation of imported reports.
+At the 2026-10-20 checkpoint, the local file-intake module and standalone panel passed fixture-based validation and storage checks. References: A2, B2, B4, L5, L7–L9.
 
 ## Files and integration contract
 
-Owned changes:
+Files at this checkpoint:
 
 - `src/prb/data/import.ts`: package schema, strict validation, normalization, immutable dataset merge, revisions, original bytes, browser-local persistence and recovery.
 - `src/prb/ui/ImportPanel.ts`: accessible preview/apply/reset panel, synthetic sample link, live operation status, storage notices, per-revision original downloads and saved-archive recovery.
 - `tests/prb/import.test.js` and `tests/prb/import-ui.test.js`: 29 focused tests.
 - `public/data/prb/templates/synthetic-evidence-package.json`: unmistakably synthetic example with two invented reports, one invented survey footprint and zero-accuracy normalization.
 - `docs/prb/local-evidence-format.md`: input fields, units, exact revision policy, limits, storage behavior and supported claims.
-
-No main entrypoint, shared domain types, existing EvidencePanel, styles, package files, staging or commits were changed by this task. The controller owns integration and final browser verification.
 
 ```ts
 const store = new EvidenceImportStore(bundledDataset, {
@@ -57,9 +55,7 @@ The current byte-identical revision is a no-op. Same revision with changed bytes
 
 Storage uses one bounded localStorage envelope. Missing/unavailable storage and quota/access failures allow clearly labeled session-only operation. Corrupt storage restores no imports, remains untouched for download, and prevents subsequent writes until reset. Save failure can leave an older persistent revision; the UI explains this. A detected archive change by another browser session rejects apply instead of replacing unseen originals. This is a conflict guard, not synchronized collaborative editing. Reset failure clears the in-session view but explicitly warns that saved imports may return on reload.
 
-## Test-first record and fresh checks
-
-All commands ran in `C:/Users/msunw/.codex/worktrees/coal-evidence-workbench/PRBsim`.
+## Checks recorded on October 20, 2026
 
 1. Wrote the intake/storage/rendering tests before implementation. `node --experimental-strip-types --test tests/prb/import.test.js tests/prb/import-ui.test.js` reported **22 failures**, each asserting the absent intake store or preview renderer. Implemented the module and renderer: **22/22 passed**; TypeScript check also passed.
 2. Added recovery, collision, coordinate-budget, sample and synthetic-revision checks. Observed **26/28 pass, 2 fail**: a synthetic package could change to empirical in a newer revision, and the sample file did not exist. Added the synthetic revision guard (also applied during restoration) and synthetic sample: **28/28 passed**.

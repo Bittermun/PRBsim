@@ -15,7 +15,3 @@ python scripts/prb/inspect_thermal_coverage.py PATH_TO_TIFF --window 768 224 128
 The script writes the side-by-side figure and a GeoJSON coverage layer. The mask requires a finite temperature value and a valid band pixel. The GeoJSON preserves covered and unknown areas and the window, units, and source digest. I re-rasterized the exported polygons back onto the source grid and matched all 12,288 classifications. Direct source samples at column 768, row 224 and column 779, row 224 returned −2.13 °C and masked, respectively.
 
 The example measures availability in one published product. An anomaly review would need its own detection rule, calibration and conditions. PRBsim's survey importer requires a reported detection result, so the coverage-only output is a separate file for review in a GIS. Its unknown polygons retain that status.
-
-## Draft for OpenDroneMap Community
-
-> I checked the NoData mask in the published Kanderfirn OpenDroneMap validation TIFF. In the attached window, 5,139 of 12,288 cells have no temperature value, and I checked that the exported coverage polygons reproduce the original mask on the raster grid. Does anyone have a thermal orthomosaic from another camera with a known gap? I'd like to run the same check on its original GeoTIFF and see whether the mask survives export.
